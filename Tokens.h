@@ -38,8 +38,8 @@ enum Token_Enum
 	T_SUBROUTINE,	// subroutine
 	T_FOR,			// for
 	T_WHILE,		// while
-	T_RETURN,		// return
 	T_RETURNI,		// returni
+	T_RETURN,		// return
 	T_DATA,
 	T_LABEL,		// label
 	T_CALL,

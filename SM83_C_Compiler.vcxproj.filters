@@ -40,5 +40,6 @@
     <None Include="LOW_Multiplication.low" />
     <None Include="LOW_Macros.low" />
     <None Include="Alphabet_Tiles.td" />
+    <None Include="Logo_Data.td" />
   </ItemGroup>
 </Project>

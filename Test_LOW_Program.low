@@ -1,5 +1,7 @@
 file Low_Multiplication.low;
 
+file Logo_Data.td;
+
 macro Alphabet_Tile_Data_Size $02E0;
 data Alphabet_Tile_Data $0300
 file Alphabet_Tiles.td;
@@ -22,7 +24,7 @@ subroutine Fast_Length $0038
 	return;					# 7th byte
 }
 
-subroutine Vblank_Procedure $0600
+subroutine Load_Mem_Vblank_Procedure $0600
 {
 	# Vblank is happening! We're allowed to access VRAM...
 
@@ -46,7 +48,8 @@ subroutine Vblank_Procedure $0600
 
 subroutine VBLANK $0040
 {
-	jump Vblank_Procedure;
+	returni;
+	# jump Vblank_Procedure;
 }
 
 subroutine Main $0150
@@ -58,20 +61,37 @@ subroutine Main $0150
 
 	# swap A;
 
-	A = $81;
-	[INTERRUPT_ENABLE_REGISTER] = A;
-	[LCDC_REGISTER] = A;
+	# A = $81;
+	# [INTERRUPT_ENABLE_REGISTER] = A;
+	# [LCDC_REGISTER] = A;
 
 	enablei;
+
+	A ^= A;
+
+	[INTERRUPT_ENABLE_REGISTER] = A;
 
 	label Wait_For_Vblank;
 
 	A = [LCDY_REGISTER];
 	A < VBLANK_LY;
+	jump not_zero Wait_For_Vblank;	# In this case, we just want an infinite loop
 
-	jump Wait_For_Vblank;	# In this case, we just want an infinite loop
+	A = $01;
 
+	[LCDC_REGISTER] = A;
 
+	call Load_Mem_Vblank_Procedure;
+
+	A = $91;
+
+	[LCDC_REGISTER] = A;
+
+	label Main_Loop;
+
+	# [INTERRUPT_ENABLE_REGISTER] = A;
+
+	jump Main_Loop;
 }
 
 subroutine Main_Byte $0100

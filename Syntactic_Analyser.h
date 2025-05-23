@@ -212,6 +212,21 @@ unsigned char Get_Identifier_Value(const Vector* Identifiers, const unsigned cha
 	return 0u;
 }
 
+void Generate_ROM_Header_Checksum(unsigned char* ROM)
+{
+	unsigned char X = 0;
+
+	unsigned int Index = 0x0134u;
+
+	while (Index <= 0x014Cu)
+	{
+		X = X - ROM[Index] - 1;
+		Index++;
+	}
+
+	ROM[0x014Du] = X;
+}
+
 void Generate_Byte_Code(const Vector* Tokens)
 {
 	Vector Identifiers = { 0, 0, 0 };
@@ -440,6 +455,8 @@ void Generate_Byte_Code(const Vector* Tokens)
 
 		//Token_Index += sizeof(Token);
 	}
+
+	Generate_ROM_Header_Checksum(ROM);
 
 	Write_ROM_To_File(ROM);
 }

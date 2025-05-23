@@ -143,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Alphabet_Tiles.td" />
+    <None Include="Logo_Data.td" />
     <None Include="LOW_Macros.low" />
     <None Include="LOW_Multiplication.low" />
     <None Include="Test_LOW_Program.low" />
