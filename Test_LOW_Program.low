@@ -1,0 +1,80 @@
+file Low_Multiplication.low;
+
+macro Alphabet_Tile_Data_Size $02E0;
+data Alphabet_Tile_Data $0300
+file Alphabet_Tiles.td;
+
+file LOW_Macros.low;
+
+subroutine Fast_Length $0038
+{
+	word String : HL;
+	byte Character : A;
+	byte Count : B;
+
+	Count = $FF;			# 1st byte
+	label Pre_Loop;
+	Count++;				# 2nd byte
+	Character = [String++];	# 3rd byte
+	Character &= Character;	# 4th byte	-	This is done to update CPU flags
+	jump not_zero Pre_Loop;	# 5th and 6th byte
+
+	return;					# 7th byte
+}
+
+subroutine Vblank_Procedure $0600
+{
+	# Vblank is happening! We're allowed to access VRAM...
+
+	HL = Alphabet_Tile_Data;
+	BC = VRAM_BLOCK_0;
+	DE = Alphabet_Tile_Data_Size;
+
+	call Memcpy;
+
+	A = $81;
+
+	[LCDC_REGISTER] = A; # Enable PPU and background
+
+	A ^= A;
+
+	[BACKGROUND_SCROLL_X_REGISTER] = A;
+	[BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	returni;	# End of interrupt, we want to return and enable interrupts again
+}
+
+subroutine VBLANK $0040
+{
+	jump Vblank_Procedure;
+}
+
+subroutine Main $0150
+{
+	# [DMA_REGISTER] = A;
+
+	# A += B;
+	# BCD;
+
+	# swap A;
+
+	A = $81;
+	[INTERRUPT_ENABLE_REGISTER] = A;
+	[LCDC_REGISTER] = A;
+
+	enablei;
+
+	label Wait_For_Vblank;
+
+	A = [LCDY_REGISTER];
+	A < VBLANK_LY;
+
+	jump Wait_For_Vblank;	# In this case, we just want an infinite loop
+
+
+}
+
+subroutine Main_Byte $0100
+{
+	jump $0150;
+}

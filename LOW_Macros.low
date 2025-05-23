@@ -1,0 +1,82 @@
+macro INTERRUPT_ENABLE_REGISTER $FFFF;
+	# bit 0 - VBLANK
+	# bit 1 - LCD
+
+
+macro BACKGROUND_SCROLL_X_REGISTER $FF43;
+macro BACKGROUND_SCROLL_Y_REGISTER $FF42;
+
+macro LCDY_REGISTER $FF44;
+macro LYC_REGISTER $FF45;		# This is the value that LCDY is compared against for the STAT register
+
+macro LCD_STATUS_REGISTER $FF41;	
+# bit 6 is set when you want a STAT interrupt to occur during LYC == LCDY
+# bit 2 is set when LYC == LCDY
+# bits 1 and 0 determine the current PPU mode (0 if HBlank or currently disabled, 1 if VBlank)
+
+macro LCDC_REGISTER $FF40;
+	# bit 7 controls LCD and PPU			(MAY ONLY BE CHANGED DURING VBLANK!!)
+	# bit 6 window tile map 9800-9BFF or 9C00-9FFF
+	# bit 5 window enable
+	# bit 4 controls addressing mode for tile *data*
+
+	# if bit 4 is set, 0-127 corresponds to $9000-97FF, and 128-255 corresponds to $8800-8FFF
+	# if bit 4 is not, 0-127 corresponds to $8000-87FF, and 128-255 corresponds to $8800-8FFF
+	# Note that objects always use the latter unsigned addressing mode for tile data
+
+	# bit 3 background tile map 9800-9BFF or 9C00-9FFF
+
+	# bit 2 OBJ 8x8 or 8x16
+
+	# bit 1 controls if objects are enabled
+
+	# bit 0 background/window enable
+
+macro DMA_REGISTER $FF46;
+	# DMA transfer copies bytes $XX00-XX9F to $FE00-FE9F
+	# DMA transfer lasts 160 cycles (where A--; is 1 cycle)
+
+macro OAM $FE00;
+	# byte 0 is y-position + 16
+	# byte 1 is x-position + 8
+	# byte 2 is tile index
+	# byte 3 are the flags
+		# bit 6 is the Y flip
+		# bit 5 is the X flip
+		# bit 4 is the palette
+
+	# 4 bytes per object
+
+macro VRAM_BLOCK_0 $8000;
+macro VRAM_BLOCK_1 $8800;
+macro VRAM_BLOCK_2 $9000;
+
+macro VRAM_TILEM_0 $9800;
+macro VRAM_TILEM_1 $9C00;
+
+macro VBLANK_LY $94;		# This is the LY value at which VBLANK begins
+
+# Instructions:
+
+
+
+# >>
+# This operation keeps the most significant bit the same
+
+# >>>
+# This operation is the same as C++ bit shift
+
+# <<
+# This operation is the same as C++ bit shift
+
+# |>><
+# Rotate right and bring carry to the most significant bit
+
+# <<>|
+# Rotate left and bring carry to least significant bit
+
+# >><
+# Rotate right
+
+# <<>
+# Rotate left
