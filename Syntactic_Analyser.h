@@ -37,7 +37,7 @@ void Write_ROM_To_File(unsigned char* ROM)
 
 	Remove_New_Line_Char_From_String(Buffer);
 
-	File = fopen((char*)Buffer, "w");
+	File = fopen((char*)Buffer, "wb");
 
 	while (File == NULL)
 	{
@@ -45,7 +45,7 @@ void Write_ROM_To_File(unsigned char* ROM)
 
 		fgets((char*)Buffer, 0xFFu, stdin);
 		Remove_New_Line_Char_From_String(Buffer);
-		File = fopen((char*)Buffer, "w");
+		File = fopen((char*)Buffer, "wb");
 	}
 
 	fwrite(ROM, sizeof(unsigned char), 0x8000u, File);

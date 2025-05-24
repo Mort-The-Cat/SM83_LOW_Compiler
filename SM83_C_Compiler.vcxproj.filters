@@ -41,5 +41,6 @@
     <None Include="LOW_Macros.low" />
     <None Include="Alphabet_Tiles.td" />
     <None Include="Logo_Data.td" />
+    <None Include="SIN_Table.td" />
   </ItemGroup>
 </Project>

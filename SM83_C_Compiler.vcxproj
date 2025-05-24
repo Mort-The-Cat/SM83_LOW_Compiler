@@ -146,6 +146,7 @@
     <None Include="Logo_Data.td" />
     <None Include="LOW_Macros.low" />
     <None Include="LOW_Multiplication.low" />
+    <None Include="SIN_Table.td" />
     <None Include="Test_LOW_Program.low" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

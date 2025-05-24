@@ -6,6 +6,10 @@ macro Alphabet_Tile_Data_Size $02E0;
 data Alphabet_Tile_Data $0300
 file Alphabet_Tiles.td;
 
+macro SIN_TABLE_SIZE $0100;
+data SIN_Table_Data $1100
+file SIN_Table.td;
+
 file LOW_Macros.low;
 
 subroutine Fast_Length $0038
@@ -24,7 +28,17 @@ subroutine Fast_Length $0038
 	return;					# 7th byte
 }
 
-subroutine Load_Mem_Vblank_Procedure $0600
+data Hello_World $0675
+{
+	$11 $0E $15 $15 $18 $25				# "Hello,"
+	$20 $18 $1B $15 $0D					# "World"
+	$26 $26 $26 $26 $26					# "!!!!!"
+	$16 $12 $0C $11 $0A $0E $15			# "Michael"
+	$20 $0A $1C							# "was"
+	$11 $0E $1B $0E						# "here"
+}
+
+subroutine Load_Mem_Vblank_Procedure $0700
 {
 	# Vblank is happening! We're allowed to access VRAM...
 
@@ -33,6 +47,81 @@ subroutine Load_Mem_Vblank_Procedure $0600
 	DE = Alphabet_Tile_Data_Size;
 
 	call Memcpy;
+
+	# Next, we want to set the tile map!!
+
+	# HL = $3000;
+	HL = $9800;
+	DE = $0300;
+
+	A = $3F;
+
+	C = A;
+	label Local_Memset;
+	[HL++] = A;
+	DE--;
+	A = D;
+	A |= E;
+	A = C;
+	jump not_zero Local_Memset;
+
+	# 
+
+	BC = Hello_World;
+	HL = $99AA;
+	DE = $001F;
+
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+
+	HL += DE;
+	
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	HL++;
 
 	A = $81;
 
@@ -46,8 +135,33 @@ subroutine Load_Mem_Vblank_Procedure $0600
 	returni;	# End of interrupt, we want to return and enable interrupts again
 }
 
+subroutine Hblank_Scroll_Routine $0650
+{
+	push HL;
+	HL = SIN_Table_Data;
+ 	# HL = SIN_Table_Data;
+ 	A = [LCDY_REGISTER];
+ 	# A += L;
+ 	L = A;
+ 	A = [HL];
+ 	pop HL;
+ 	[BACKGROUND_SCROLL_X_REGISTER] = A;
+ 	# A += L;
+ 	# [BACKGROUND_SCROLL_Y_REGISTER] = A;
+ 
+ 	returni;
+}
+
+subroutine HBLANK $0048
+{
+ 	jump Hblank_Scroll_Routine;
+}
+
 subroutine VBLANK $0040
 {
+	HL++;
+	A = L;
+	[BACKGROUND_SCROLL_Y_REGISTER] = A;
 	returni;
 	# jump Vblank_Procedure;
 }
@@ -86,6 +200,14 @@ subroutine Main $0150
 	A = $91;
 
 	[LCDC_REGISTER] = A;
+
+	A = $08;
+
+	[LCD_STATUS_REGISTER] = A; # This will give Hblank interrupts
+
+	A = $03;
+
+	[INTERRUPT_ENABLE_REGISTER] = A;
 
 	label Main_Loop;
 
