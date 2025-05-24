@@ -10,6 +10,10 @@ macro SIN_TABLE_SIZE $0100;
 data SIN_Table_Data $1100
 file SIN_Table.td;
 
+macro PLAYER_GRAPHICS_SIZE $0100;
+data Player_Graphics_Data $1200
+file Player_Tiles.td;
+
 file LOW_Macros.low;
 
 subroutine Fast_Length $0038
@@ -38,6 +42,13 @@ data Hello_World $0675
 	$11 $0E $1B $0E						# "here"
 }
 
+data Player_Tile_Map $1300
+{
+	$00 $01 $3F		$00 $01 $3F		$00 $01 $3F
+	$02 $03 $04		$05 $06 $07		$08 $09 $04
+	$0B	$0C $0A		$0E $0F $0D		$0E $0C $0A
+}
+
 subroutine Load_Mem_Vblank_Procedure $0700
 {
 	# Vblank is happening! We're allowed to access VRAM...
@@ -48,12 +59,13 @@ subroutine Load_Mem_Vblank_Procedure $0700
 
 	call Memcpy;
 
-	# Next, we want to set the tile map!!
+	HL = Player_Graphics_Data;
+	DE = PLAYER_GRAPHICS_SIZE;
 
-	# HL = $3000;
+	call Memcpy;
+
 	HL = $9800;
-	DE = $0300;
-
+	DE = $0400;
 	A = $3F;
 
 	C = A;
@@ -65,63 +77,83 @@ subroutine Load_Mem_Vblank_Procedure $0700
 	A = C;
 	jump not_zero Local_Memset;
 
-	# 
+	A = $E4;
+	[$FF47] = A;
+
+	DE = $9828;
+	HL = Player_Tile_Map;
+	C = $03;
+
+	label Player_Tile_Memset_0;
+	B = $09;
+	label Player_Tile_Memset_1;
+	A = [HL++];
+	A += $2E;
+	[DE] = A;
+	DE++;
+	B--;
+	jump not_zero Player_Tile_Memset_1;
+	A = E;
+	A += $17;
+	E = A;
+	C--;
+	jump not_zero Player_Tile_Memset_0;
 
 	BC = Hello_World;
-	HL = $99AA;
-	DE = $001F;
+	HL = $996A;
+	# DE = $001F;
 
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
+	E = $06;
 
+	label Local_Hello;
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Hello;
+
+	DE = $0018;
 	HL += DE;
-	
+	E = $0A;
+
+	label Local_World;	
 	A = [BC];
 	BC++;
-	[HL] = A;
-	HL++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_World;
+
+	DE = $0035;
+	HL += DE;
+	E = $7;
+
+	label Local_Michael;
 	A = [BC];
 	BC++;
-	[HL] = A;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Michael;
+
 	HL++;
+	E = $03;
+
+	label Local_Was;
 	A = [BC];
 	BC++;
-	[HL] = A;
-	HL++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Was;
+
+	DE = $0016;
+	HL += DE;
+	E = $04;
+
+	label Local_Here;
 	A = [BC];
 	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
-	A = [BC];
-	BC++;
-	[HL] = A;
-	HL++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Here;
 
 	A = $81;
 
@@ -139,15 +171,12 @@ subroutine Hblank_Scroll_Routine $0650
 {
 	push HL;
 	HL = SIN_Table_Data;
- 	# HL = SIN_Table_Data;
  	A = [LCDY_REGISTER];
- 	# A += L;
+	A -= $30;
  	L = A;
  	A = [HL];
  	pop HL;
  	[BACKGROUND_SCROLL_X_REGISTER] = A;
- 	# A += L;
- 	# [BACKGROUND_SCROLL_Y_REGISTER] = A;
  
  	returni;
 }
@@ -163,22 +192,10 @@ subroutine VBLANK $0040
 	A = L;
 	[BACKGROUND_SCROLL_Y_REGISTER] = A;
 	returni;
-	# jump Vblank_Procedure;
 }
 
 subroutine Main $0150
 {
-	# [DMA_REGISTER] = A;
-
-	# A += B;
-	# BCD;
-
-	# swap A;
-
-	# A = $81;
-	# [INTERRUPT_ENABLE_REGISTER] = A;
-	# [LCDC_REGISTER] = A;
-
 	enablei;
 
 	A ^= A;
@@ -210,8 +227,6 @@ subroutine Main $0150
 	[INTERRUPT_ENABLE_REGISTER] = A;
 
 	label Main_Loop;
-
-	# [INTERRUPT_ENABLE_REGISTER] = A;
 
 	jump Main_Loop;
 }

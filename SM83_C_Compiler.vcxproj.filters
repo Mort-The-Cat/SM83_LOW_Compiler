@@ -42,5 +42,6 @@
     <None Include="Alphabet_Tiles.td" />
     <None Include="Logo_Data.td" />
     <None Include="SIN_Table.td" />
+    <None Include="Player_Tiles.td" />
   </ItemGroup>
 </Project>
