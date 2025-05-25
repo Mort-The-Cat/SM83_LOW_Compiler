@@ -123,7 +123,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <CompileAs>CompileAsC</CompileAs>
-      <DisableSpecificWarnings>_CRT_SECURE_NO_WARNINGS;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,13 +142,15 @@
     <ClInclude Include="Tokens.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Alphabet_Tiles.td" />
     <None Include="Logo_Data.td" />
     <None Include="LOW_Macros.low" />
     <None Include="LOW_Multiplication.low" />
+    <None Include="Player_Sprite_And_Background_Test\Player_Tiles.td" />
     <None Include="Player_Tiles.td" />
     <None Include="SIN_Table.td" />
-    <None Include="Test_LOW_Program.low" />
+    <None Include="Sprite_Test\Player_Tiles.td" />
+    <None Include="Test_Program\Player_Tiles.td" />
+    <None Include="Test_Program\SIN_Table.td" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

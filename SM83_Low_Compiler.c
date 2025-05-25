@@ -4,12 +4,23 @@
 #include "Tokens.h"
 #include "Syntactic_Analyser.h"
 
+void Get_User_Input_File(unsigned char* Buffer)
+{
+	printf("Please enter a file name:\n");
+	fgets(Buffer, 0xFF, stdin);
+	Remove_New_Line_Char_From_String(Buffer);
+}
+
 void Output_Tokens()
 {
 	Token T;
 	Vector Tokens = { 0, 0, 0 };
 
-	Tokenise(&Tokens, "Test_LOW_Program.low");
+	unsigned char Buffer[0xFF];
+
+	Get_User_Input_File(Buffer);
+
+	Tokenise(&Tokens, Buffer);
 
 	Place_Identifiers(&Tokens);
 

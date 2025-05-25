@@ -34,14 +34,14 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Test_LOW_Program.low">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="LOW_Multiplication.low" />
     <None Include="LOW_Macros.low" />
-    <None Include="Alphabet_Tiles.td" />
     <None Include="Logo_Data.td" />
     <None Include="SIN_Table.td" />
     <None Include="Player_Tiles.td" />
+    <None Include="Test_Program\Player_Tiles.td" />
+    <None Include="Test_Program\SIN_Table.td" />
+    <None Include="Player_Sprite_And_Background_Test\Player_Tiles.td" />
+    <None Include="Sprite_Test\Player_Tiles.td" />
   </ItemGroup>
 </Project>

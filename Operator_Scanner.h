@@ -43,6 +43,48 @@ void Place_Operand_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index
 	// (*Token_Index) += 4u * sizeof(Token);
 }
 
+unsigned char* Get_Representation(const Vector* Target_Tokens, unsigned int Token_Index)
+{
+	while (((Token*)(Target_Tokens->Data + (Token_Index)))->Token != T_HEX_LITERAL)
+		Token_Index-= sizeof(Token);
+
+	return ((Token*)(Target_Tokens->Data + (Token_Index)))->Representation;
+}
+
+void Place_High_RAM_Operand_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index, unsigned int* ROM_Index, const Vector* Identifiers, const Vector* Target_Tokens, unsigned int Opcode)
+{
+	ROM[(*ROM_Index)++] = Opcode;
+
+	ROM[(*ROM_Index)++] = Get_Value_From_String(Get_Representation(Target_Tokens, *Token_Index));
+}
+
+void Place_CB_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index, unsigned int* ROM_Index, const Vector* Identifiers, const Vector* Target_Tokens, unsigned int Opcode)
+{
+	ROM[(*ROM_Index)++] = 0xCBu;	// CB Prefix
+	ROM[(*ROM_Index)++] = Opcode;
+}
+
+#define Bit_Shift_INSTRUCTION(Instruction, Register, Opcode)\
+	{ (const unsigned char[]){ Register, Instruction, T_NUMBER, T_SEMI }, 4, Opcode, Place_CB_Opcode_Function },\
+	{ (const unsigned char[]) { Register, Instruction, T_HEX_LITERAL, T_SEMI }, 4, Opcode, Place_CB_Opcode_Function }
+
+#define Bit_Shift_Instruction_HL(Instruction, Opcode)\
+	{ (const unsigned char[]){ T_OPEN_SQ, T_REGISTER_PAIR_HL, T_CLOSE_SQ, Instruction, T_NUMBER, T_SEMI }, 6, Opcode, Place_CB_Opcode_Function },\
+	{ (const unsigned char[]){ T_OPEN_SQ, T_REGISTER_PAIR_HL, T_CLOSE_SQ, Instruction, T_HEX_LITERAL, T_SEMI }, 6, Opcode, Place_CB_Opcode_Function }
+
+#define Define_Bit_Shift_Instruction_Row(Instruction, Address)\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_B, Address + 0x00u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_C, Address + 0x01u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_D, Address + 0x02u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_E, Address + 0x03u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_H, Address + 0x04u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_L, Address + 0x05u),\
+	Bit_Shift_Instruction_HL(Instruction, Address + 0x06u),\
+	Bit_Shift_INSTRUCTION(Instruction, T_REGISTER_A, Address + 0x07u)
+
+#define Define_Swap_Instruction(Register, Opcode)\
+	{ (const unsigned char[]){ T_SWAP, Register, T_SEMI }, 3, Opcode, Place_CB_Opcode_Function }
+
 #define INSTRUCTION_ROW(INSTRUCTION, Destination, Row)\
 	INSTRUCTION##_INSTRUCTION(Destination, B, Row + 0u),\
 	INSTRUCTION##_INSTRUCTION(Destination, C, Row + 1u),\
@@ -163,6 +205,12 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 	{
 		INSTRUCTION_DEFINER(LD, 0x40u),
 
+		{ (const unsigned char[]) { T_OPEN_SQ, T_REGISTER_C, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 6, 0xE2u, Place_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_REGISTER_C, T_CLOSE_SQ, T_SEMI }, 6, 0xF2u, Place_Opcode_Function },
+
+		{ (const unsigned char[]) { T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_REGISTER_C, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 8, 0xE2u, Place_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_REGISTER_C, T_CLOSE_SQ, T_SEMI }, 8, 0xF2u, Place_Opcode_Function },
+
 		PUSH_POP_INSTRUCTIONS(T_POP, 0x00u),
 		PUSH_POP_INSTRUCTIONS(T_PUSH, 0x04u),
 
@@ -178,6 +226,28 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 		WORD_ASSIGN_INSTRUCTION(T_REGISTER_PAIR_DE, 0x11u),
 		WORD_ASSIGN_INSTRUCTION(T_REGISTER_PAIR_HL, 0x21u),
 		WORD_ASSIGN_INSTRUCTION(T_SP, 0x31u),
+
+		{ (const unsigned char[]) { T_REGISTER_A, T_ROTATE_LEFT, T_NUMBER, T_SEMI }, 4, 0x07u, Place_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_CARRY_LEFT_ROTATE, T_NUMBER, T_SEMI }, 4, 0x17u, Place_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_ROTATE_RIGHT, T_NUMBER, T_SEMI }, 4, 0x0Fu, Place_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_CARRY_RIGHT_ROTATE, T_NUMBER, T_SEMI }, 4, 0x1Fu, Place_Opcode_Function },
+
+		Define_Bit_Shift_Instruction_Row(T_CARRY_LEFT_ROTATE, 0x10u),
+		Define_Bit_Shift_Instruction_Row(T_CARRY_RIGHT_ROTATE, 0x18u),
+		Define_Bit_Shift_Instruction_Row(T_ROTATE_LEFT, 0x00u),
+		Define_Bit_Shift_Instruction_Row(T_ROTATE_RIGHT, 0x08u),
+		Define_Bit_Shift_Instruction_Row(T_LEFT_SHIFT, 0x20u),
+		Define_Bit_Shift_Instruction_Row(T_ARITHMETIC_RIGHT_SHIFT, 0x28u),
+		Define_Bit_Shift_Instruction_Row(T_LOGICAL_RIGHT_SHIFT, 0x38u),
+
+		Define_Swap_Instruction(T_REGISTER_B, 0x30u),
+		Define_Swap_Instruction(T_REGISTER_C, 0x31u),
+		Define_Swap_Instruction(T_REGISTER_D, 0x32u),
+		Define_Swap_Instruction(T_REGISTER_E, 0x33u),
+		Define_Swap_Instruction(T_REGISTER_H, 0x34u),
+		Define_Swap_Instruction(T_REGISTER_L, 0x35u),
+		{ (const unsigned char[]) { T_SWAP, T_OPEN_SQ, T_REGISTER_PAIR_HL, T_CLOSE_SQ, T_SEMI }, 5, 0x36u, Place_CB_Opcode_Function },
+		Define_Swap_Instruction(T_REGISTER_A, 0x37u),
 
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_REGISTER_PAIR_HL, T_PLUS_PLUS, T_CLOSE_SQ, T_SEMI }, 7, 0x2Au, Place_Opcode_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_REGISTER_PAIR_HL, T_MINUS_MINUS, T_CLOSE_SQ, T_SEMI }, 7, 0x3Au, Place_Opcode_Function },
@@ -229,7 +299,10 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 		{ (const unsigned char[]) { T_OPEN_SQ, T_NUMBER, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 6, 0xEAu, Place_Opcode_Word_Operand_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_HEX_LITERAL, T_CLOSE_SQ, T_SEMI }, 6, 0xFAu, Place_Opcode_Word_Operand_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_NUMBER, T_CLOSE_SQ, T_SEMI }, 6, 0xFAu, Place_Opcode_Word_Operand_Function },
-		
+
+		{ (const unsigned char[]) { T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_HEX_LITERAL, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 8, 0xE0u, Place_High_RAM_Operand_Opcode_Function },
+		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_HEX_LITERAL, T_CLOSE_SQ, T_SEMI }, 8, 0xF0u, Place_High_RAM_Operand_Opcode_Function },
+
 		// { (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_REGISTER_B, T_SEMI }, 4, }
 	};
 

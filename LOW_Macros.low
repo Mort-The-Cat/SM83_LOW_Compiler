@@ -6,11 +6,19 @@ macro INTERRUPT_ENABLE_REGISTER $FFFF;
 macro BACKGROUND_SCROLL_X_REGISTER $FF43;
 macro BACKGROUND_SCROLL_Y_REGISTER $FF42;
 
+macro BACKGROUND_PALETTE_REGISTER $FF47;
+	# Every 2-bits of this is the colour value of colour values 0-3
+
+macro OBJECT_PALETTE_0_REGISTER $FF48;
+macro OBJECT_PALETTE_1_REGISTER $FF49;
+
 macro LCDY_REGISTER $FF44;
 macro LYC_REGISTER $FF45;		# This is the value that LCDY is compared against for the STAT register
 
 macro LCD_STATUS_REGISTER $FF41;	
 # bit 6 is set when you want a STAT interrupt to occur during LYC == LCDY
+
+# bit 3 is set when you want HBLANK interrupts 
 # bit 2 is set when LYC == LCDY
 # bits 1 and 0 determine the current PPU mode (0 if HBlank or currently disabled, 1 if VBlank)
 
@@ -20,8 +28,8 @@ macro LCDC_REGISTER $FF40;
 	# bit 5 window enable
 	# bit 4 controls addressing mode for tile *data*
 
-	# if bit 4 is set, 0-127 corresponds to $9000-97FF, and 128-255 corresponds to $8800-8FFF
-	# if bit 4 is not, 0-127 corresponds to $8000-87FF, and 128-255 corresponds to $8800-8FFF
+	# if bit 4 is not, 0-127 corresponds to $9000-97FF, and 128-255 corresponds to $8800-8FFF
+	# if bit 4 is set, 0-127 corresponds to $8000-87FF, and 128-255 corresponds to $8800-8FFF
 	# Note that objects always use the latter unsigned addressing mode for tile data
 
 	# bit 3 background tile map 9800-9BFF or 9C00-9FFF
@@ -43,9 +51,15 @@ macro OAM $FE00;
 	# byte 3 are the flags
 		# bit 6 is the Y flip
 		# bit 5 is the X flip
-		# bit 4 is the palette
+		# bit 4 is the palette (palette 0 or palette 1)
 
 	# 4 bytes per object
+
+# C000 - DFFF is the work RAM!
+
+# When something is pushed to the stack, the stack pointer *decreases*
+
+# Hence, the SP needs to be somewhere like CFFF for example
 
 macro VRAM_BLOCK_0 $8000;
 macro VRAM_BLOCK_1 $8800;
@@ -55,6 +69,10 @@ macro VRAM_TILEM_0 $9800;
 macro VRAM_TILEM_1 $9C00;
 
 macro VBLANK_LY $94;		# This is the LY value at which VBLANK begins
+
+macro CONTROLLER_REGISTER $FF00;
+	# bit 5 - clear this bit if you want the Start/Select/  B /    A buttons
+	# bit 4 - clear this bit if you want the Down /  Up  /Left/Right buttons
 
 # Instructions:
 

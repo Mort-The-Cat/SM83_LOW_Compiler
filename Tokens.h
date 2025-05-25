@@ -259,7 +259,7 @@ unsigned int Token_Check_Identifier_For_Macro(const Vector* File_Contents, Vecto
 
 	while (Macro_Index < Compiler_Macros->Size)
 	{
-		if (Delta = Compare_Strings(File_Contents->Data + Index, *(char**)(Compiler_Macros->Data + Macro_Index)))
+		if (Delta = Strict_Compare_Strings(File_Contents->Data + Index, *(char**)(Compiler_Macros->Data + Macro_Index)))
 		{
 			return Macro_Index + 1;
 		}

@@ -1,0 +1,149 @@
+file LOW_Macros.low;
+file Logo_Data.td;
+
+file LOW_Multiplication.low;
+
+subroutine Memset $0038
+{
+	word Destination : HL;
+	byte Value : A;
+	byte Count : E;
+	byte Count_1 : D;
+
+	label Memset_Loop_Local;
+	[Destination++] = Value;			# 0038
+	Count--;							# 0039
+	jump not_zero Memset_Loop_Local;	# 003A - 003B
+	Count_1--;							# 003C
+	jump not_carry Memset_Loop_Local;	# 003D - 003E
+	return;								# 003F
+}
+
+macro Alphabet_Tile_Data_Size $02E0;
+data Alphabet_Tile_Data $0200;
+file Sprite_Test/Alphabet_Tiles.td;
+
+# Stretches from $0100-$02DF
+
+macro Player_Tile_Data_Size $0100;
+data Player_Tile_Data_Size $04E0
+file Sprite_Test/Player_Tiles.td;
+
+# Stretches from $03E0-$04DF
+
+macro Init_Test_Graphics $0640;
+
+macro Main $05E0;
+subroutine Main Main;
+{
+	label Wait_VBLANK_Loop;
+	A = [$FF00 + LCDY_REGISTER];			# 04E0
+	A < VBLANK_LY;							# 04E1
+	jump not_zero Wait_VBLANK_Loop;			# 04E2 - 04E3
+
+	# We're in VBLANK! We can turn off the LCD and load in data
+
+	call Init_Test_Graphics;				# 04E4 - 04E6
+
+	label Main_Loop_Local;
+	jump Main_Loop_Local;					# 04E7 - 04E8
+}
+
+macro Brick_Background_Graphics_Size $0040;
+data Brick_Background_Graphics_Data $0600
+file Sprite_Test/Brick_16_16_Background.td;
+
+subroutine Vblank_Procedure $0700
+{
+	HL++;
+
+	A = L;
+
+	[BACKGROUND_SCROLL_X_REGISTER] = A;
+
+	A >>>= 1;
+	A >>>= 1;
+
+	[BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	returni;
+}
+
+subroutine Vblank_Jump $0040
+{
+	jump Vblank_Procedure;
+}
+
+subroutine Main_Jump $0100
+{
+	jump Main;
+}
+
+subroutine Init_Test_Graphics Init_Test_Graphics
+{
+	A ^= A;
+	[$FF00 + LCDC_REGISTER] = A; # This turns off the LCDC and PPU momentarily
+
+	HL = Alphabet_Tile_Data;
+	BC = $9000;
+	DE = Alphabet_Tile_Data_Size;
+
+	call Memcpy;						# Loads alphabet in VRAM
+
+	HL = Brick_Background_Graphics_Data;
+	DE = Brick_Background_Graphics_Size;
+
+	call Memcpy;						# Loads bricks into VRAM
+
+	# HL = VRAM_TILEM_0;
+	# DE = $0400;
+
+	# A = $05;
+
+	# call Memset;						# Clears tile map
+
+	HL = VRAM_TILEM_0;
+
+	A = $2E; # Start of Brick graphic
+	B = $02; # Offset
+
+	E = $20;
+	label Brick_Graphic_Memcpy;
+	C = $02;
+	label Brick_Graphic_Odd_Row_Loop;
+	D = $10;
+	label Brick_Graphic_Row_Loop;
+	[HL++] = A;
+	A += B;
+	[HL++] = A;
+	A -= B;
+	D--;
+	jump not_zero Brick_Graphic_Row_Loop; 
+	A++;
+	C--;
+	jump not_zero Brick_Graphic_Odd_Row_Loop;
+	A-=B;
+	E--;
+	jump not_zero Brick_Graphic_Memcpy;
+
+	# Finished copying the memory!!
+
+	A = $E4;
+
+	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+	swap A;
+	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
+
+	A = $01;
+
+	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
+
+	A = $81;
+
+	[$FF00 + LCDC_REGISTER] = A;
+
+	HL = $0000;
+
+	returni;
+}

@@ -4,15 +4,15 @@ file Logo_Data.td;
 
 macro Alphabet_Tile_Data_Size $02E0;
 data Alphabet_Tile_Data $0300
-file Alphabet_Tiles.td;
+file Test_Program/Alphabet_Tiles.td;
 
 macro SIN_TABLE_SIZE $0100;
 data SIN_Table_Data $1100
-file SIN_Table.td;
+file Test_Program/SIN_Table.td;
 
 macro PLAYER_GRAPHICS_SIZE $0100;
 data Player_Graphics_Data $1200
-file Player_Tiles.td;
+file Test_Program/Player_Tiles.td;
 
 file LOW_Macros.low;
 
@@ -77,8 +77,21 @@ subroutine Load_Mem_Vblank_Procedure $0700
 	A = C;
 	jump not_zero Local_Memset;
 
+	HL = $FE00;
+	E = $A0;
+	A = $00;
+
+	label Local_OAM_Clear;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_OAM_Clear;
+
 	A = $E4;
-	[$FF47] = A;
+	[$FF47] = A;					# Background palette
+
+	[$FF48] = A;
+	A = $4E;
+	[$FF49] = A;
 
 	DE = $9828;
 	HL = Player_Tile_Map;
@@ -161,8 +174,8 @@ subroutine Load_Mem_Vblank_Procedure $0700
 
 	A ^= A;
 
-	[BACKGROUND_SCROLL_X_REGISTER] = A;
-	[BACKGROUND_SCROLL_Y_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
 
 	returni;	# End of interrupt, we want to return and enable interrupts again
 }
@@ -176,7 +189,7 @@ subroutine Hblank_Scroll_Routine $0650
  	L = A;
  	A = [HL];
  	pop HL;
- 	[BACKGROUND_SCROLL_X_REGISTER] = A;
+ 	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
  
  	returni;
 }
@@ -186,11 +199,49 @@ subroutine HBLANK $0048
  	jump Hblank_Scroll_Routine;
 }
 
+subroutine Set_Sprite_VBLANK $2000
+{
+	push HL;
+
+	D = $11;				# SIN_Table_Data
+	E = L;					# Indexes the global frame counter into it
+	A = [DE];				# Gets value from table
+	E = A;
+
+	HL = $FE00;
+
+	[HL++] = A;				# Sets Y value to that value
+
+
+	A = $20;
+	[HL++] = A;
+	A = $2E;
+	[HL++] = A;
+	A = $00;
+	[HL++] = A;
+
+	A = E;
+	[HL++] = A;
+	A = $28;
+	[HL++] = A;
+	A = $2F;
+	[HL++] = A;
+	A ^= A;
+	[HL++] = A;
+
+	pop HL;
+
+	return;
+}
+
 subroutine VBLANK $0040
 {
 	HL++;
 	A = L;
-	[BACKGROUND_SCROLL_Y_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	call Set_Sprite_VBLANK;
+
 	returni;
 }
 
@@ -214,7 +265,7 @@ subroutine Main $0150
 
 	call Load_Mem_Vblank_Procedure;
 
-	A = $91;
+	A = $93;
 
 	[LCDC_REGISTER] = A;
 
@@ -222,7 +273,7 @@ subroutine Main $0150
 
 	[LCD_STATUS_REGISTER] = A; # This will give Hblank interrupts
 
-	A = $03;
+	A = $01;
 
 	[INTERRUPT_ENABLE_REGISTER] = A;
 

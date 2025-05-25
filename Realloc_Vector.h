@@ -120,6 +120,15 @@ unsigned char Is_Alpha_Numeric(unsigned char Character)
 	return ALPHANUMERIC_0;
 }
 
+unsigned char Strict_Compare_Strings(unsigned char* String_1, const unsigned char* String_2)
+{
+	unsigned int X = 0;
+	while (Is_Alpha_Numeric(String_1[X]) && Is_Alpha_Numeric(String_2[X]) && String_1[X] == String_2[X])
+		X++;
+
+	return (!(Is_Alpha_Numeric(String_1[X]) || Is_Alpha_Numeric(String_2[X]))) * X;
+}
+
 unsigned char Compare_Strings(unsigned char* String_1, const unsigned char* String_2)
 {
 	unsigned int X = 0;
