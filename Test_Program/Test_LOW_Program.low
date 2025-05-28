@@ -186,8 +186,10 @@ subroutine Hblank_Scroll_Routine $0650
 	HL = SIN_Table_Data;
  	A = [LCDY_REGISTER];
 	A -= $30;
+	A += A;
  	L = A;
  	A = [HL];
+	A >>>= 1;
  	pop HL;
  	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
  
@@ -206,6 +208,10 @@ subroutine Set_Sprite_VBLANK $2000
 	D = $11;				# SIN_Table_Data
 	E = L;					# Indexes the global frame counter into it
 	A = [DE];				# Gets value from table
+	A >>>= 1;
+	A >>>= 1;
+	A += $10;
+
 	E = A;
 
 	HL = $FE00;
@@ -273,7 +279,7 @@ subroutine Main $0150
 
 	[LCD_STATUS_REGISTER] = A; # This will give Hblank interrupts
 
-	A = $01;
+	A = $03;
 
 	[INTERRUPT_ENABLE_REGISTER] = A;
 

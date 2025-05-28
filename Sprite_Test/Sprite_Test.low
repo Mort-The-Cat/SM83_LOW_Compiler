@@ -15,7 +15,7 @@ subroutine Memset $0038
 	Count--;							# 0039
 	jump not_zero Memset_Loop_Local;	# 003A - 003B
 	Count_1--;							# 003C
-	jump not_carry Memset_Loop_Local;	# 003D - 003E
+	jump not_zero Memset_Loop_Local;	# 003D - 003E
 	return;								# 003F
 }
 
@@ -29,11 +29,15 @@ macro Player_Tile_Data_Size $0100;
 data Player_Tile_Data_Size $04E0
 file Sprite_Test/Player_Tiles.td;
 
+macro Sin_Table_Data_Size $0100;
+data Sin_Table_Data $0800
+file Sprite_Test/SIN_Table.td;
+
 # Stretches from $03E0-$04DF
 
 macro Init_Test_Graphics $0640;
 
-macro Main $05E0;
+macro Main $0150;
 subroutine Main Main;
 {
 	label Wait_VBLANK_Loop;
@@ -49,22 +53,89 @@ subroutine Main Main;
 	jump Main_Loop_Local;					# 04E7 - 04E8
 }
 
+macro Title_Tile_Data_Size $0080;
+data Title_Tile_Data $0160
+file Sprite_Test/Title.td;
+
 macro Brick_Background_Graphics_Size $0040;
 data Brick_Background_Graphics_Data $0600
 file Sprite_Test/Brick_16_16_Background.td;
 
-subroutine Vblank_Procedure $0700
+subroutine Update_Title_Screen_Window_Midframe $0730
+{
+	A = $FF;
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+	# pop AF;
+
+	A ^= A;
+
+	[$FF00 + LCD_STATUS_REGISTER] = A;
+
+	returni;
+}
+
+subroutine Title_Screen_STAT_Interrupt $07B0
+{
+	A = [$FF00 + LCD_STATUS_REGISTER];					# 0748 - 0749
+	A &= $02;											# 074A - 074B
+
+	jump not_zero Update_Title_Screen_Window_Midframe;	# 074C - 004E
+
+	B = $08;											# 074F - 0750
+	A = [$FF00 + LCDY_REGISTER];
+	A += A;
+	A += L;
+	C = A;
+
+	A = [BC];											# 0751
+	
+	swap A;
+
+	A &= $0F;
+
+	A >>>= 1;
+
+	jump not_zero Local_Conditional_Add;
+
+	A++;
+
+	label Local_Conditional_Add;
+
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;				# 0755 - 0756
+
+	returni;											# 0757
+}
+
+subroutine STAT_Interrupt $0048
+{
+	jump Title_Screen_STAT_Interrupt;
+}
+
+subroutine Vblank_Procedure $06A8
 {
 	HL++;
 
 	A = L;
 
-	[BACKGROUND_SCROLL_X_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
 
 	A >>>= 1;
 	A >>>= 1;
 
-	[BACKGROUND_SCROLL_Y_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	A = $07;
+
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+	A = $10;
+
+	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
+
+	A = $48;
+
+	[$FF00 + LCD_STATUS_REGISTER] = A; # We want LDY interrupt AND HBlank interrupt
 
 	returni;
 }
@@ -77,6 +148,80 @@ subroutine Vblank_Jump $0040
 subroutine Main_Jump $0100
 {
 	jump Main;
+}
+
+subroutine DMA_Function_Instructions $0720
+{
+	A = $40;		# 2 cycles / 0720-0721
+	label DMA_Loop;
+	A--;			# 1 cycle  / 0722
+	jump not_zero DMA_Loop;	# 3 cycles / 0723-0724
+	return;			# 4 cycles / 0725
+}
+
+macro DMA_Function $FF80;
+subroutine Init_DMA $0700
+{
+	HL = $0720;
+	C = $80;
+	D = $06;
+	label Load_DMA_Loop;
+	A = [HL++];
+	[$FF00 + C] = A;
+	C++;
+	D--;
+	jump not_zero Load_DMA_Loop;
+
+	return;
+}
+
+data Title_Screen_Important_Tiles $0780
+{
+	$36 $35 $35 $34 $36 $34 $37 $38 $35 $34 $36 $35 $35
+
+	$36 $35 $34 $34 $36 $34 $34 $36 $34 $34 $36 $35 $34
+
+	$37 $34 $34 $34 $37 $34 $34 $37 $34 $34 $37 $35 $35
+}
+
+subroutine Load_Title_Screen_Graphics $0740
+{
+	HL = $9C00;		# Window tile map
+	A = $32;		# The first graphic
+
+	DE = $0120; # The value 32 (this is how long a line of the tilemap is)
+
+	call Memset;
+
+	A = $34;
+
+	DE = $0160;
+
+	call Memset;
+
+	A--;
+
+	DE = $0120;
+
+	call Memset;
+
+	# Finished loading in the background stuff!
+
+	BC = $9C23;
+	HL = Title_Screen_Important_Tiles;
+	DE = $000D;
+
+	call Memcpy;
+
+	BC = $9C43;
+	DE = $000D;
+	call Memcpy;
+
+	BC = $9C63;
+	DE = $000D;
+	call Memcpy;
+
+	return;
 }
 
 subroutine Init_Test_Graphics Init_Test_Graphics
@@ -102,6 +247,11 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 
 	# call Memset;						# Clears tile map
 
+	DE = Title_Tile_Data_Size;
+	HL = Title_Tile_Data;
+
+	call Memcpy;
+
 	HL = VRAM_TILEM_0;
 
 	A = $2E; # Start of Brick graphic
@@ -126,6 +276,7 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 	E--;
 	jump not_zero Brick_Graphic_Memcpy;
 
+	call Load_Title_Screen_Graphics;
 	# Finished copying the memory!!
 
 	A = $E4;
@@ -135,13 +286,27 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 	swap A;
 	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
 
-	A = $01;
+	A = $03;
 
 	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
 
-	A = $81;
+	call Init_DMA;
 
-	[$FF00 + LCDC_REGISTER] = A;
+	A = $E1;
+
+	[$FF00 + LCDC_REGISTER] = A;	
+		# LCD/PPU ON
+		# ENABLE BG
+		# ENABLE WINDOW
+		# GIVE DIFFERENT TILEMAP FOR WINDOW
+
+	A = $37;
+
+	[$FF00 + LYC_REGISTER] = A;
+
+	A = $48;
+
+	[$FF00 + LCD_STATUS_REGISTER] = A;
 
 	HL = $0000;
 

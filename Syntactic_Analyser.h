@@ -227,9 +227,25 @@ void Generate_ROM_Header_Checksum(unsigned char* ROM)
 	ROM[0x014Du] = X;
 }
 
+typedef struct
+{
+	unsigned int ROM_Index;				 // Position in ROM where jump is
+	const unsigned char* Representation; // Identifier in question
+} Unresolved_Jump_Relative_Identifier;
+
+void Add_Unresolved_Jump_Relative_Identifier(Vector* Unresolved_Jump_Relative_Identifiers, unsigned int ROM_Index, const unsigned char* Representation)
+{
+	Unresolved_Jump_Relative_Identifier Identifier;
+	Identifier.ROM_Index = ROM_Index;
+	Identifier.Representation = Representation;
+	Vector_Push_Memory(Unresolved_Jump_Relative_Identifiers, &Identifier, sizeof(Unresolved_Jump_Relative_Identifier));
+}
+
 void Generate_Byte_Code(const Vector* Tokens)
 {
 	Vector Identifiers = { 0, 0, 0 };
+
+	Vector Unresolved_Jump_Relative_Identifiers = { 0, 0, 0 };
 
 	Byte_Code Byte;
 
@@ -283,6 +299,21 @@ void Generate_Byte_Code(const Vector* Tokens)
 			Byte.Identifier = (unsigned char*)T[1].Representation;
 
 			Vector_Push_Memory(&Identifiers, (unsigned char*)&Byte, sizeof(Byte_Code));
+
+			if (Unresolved_Jump_Relative_Identifiers.Size)
+			{
+				if (0 == strcmp(((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->Representation, Byte.Identifier))
+				{
+					// CURRENT ROM INDEX IS WHAT WE WANT!!
+
+					Buffer = ROM_Index;
+					Buffer -= (((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->ROM_Index + 1);
+
+					ROM[((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->ROM_Index] = Buffer; // Good!!
+
+					Vector_Clear(&Unresolved_Jump_Relative_Identifiers);
+				}
+			}
 
 			Token_Index += sizeof(Token) * 3;
 			break;
@@ -338,7 +369,14 @@ void Generate_Byte_Code(const Vector* Tokens)
 			if (Jump_Conditions == 2)
 			{
 				if (T[2].Token == T_ID)
-					Get_Identifier_Value(&Identifiers, (unsigned char*)T[2].Representation, &Buffer);
+				{
+					if (!Get_Identifier_Value(&Identifiers, (unsigned char*)T[2].Representation, &Buffer))
+					{
+						Add_Unresolved_Jump_Relative_Identifier(&Unresolved_Jump_Relative_Identifiers, ROM_Index + 1, (unsigned char*)T[2].Representation);
+
+						Buffer = ROM_Index;
+					}
+				}
 				else
 					Buffer = Get_Value_From_String((unsigned char*)T[2].Representation);
 
@@ -372,7 +410,10 @@ void Generate_Byte_Code(const Vector* Tokens)
 
 					// Look for identifier
 
-					Get_Identifier_Value(&Identifiers, (unsigned char*)T[1].Representation, &Buffer);
+					if (!Get_Identifier_Value(&Identifiers, (unsigned char*)T[1].Representation, &Buffer))
+					{
+						Add_Unresolved_Jump_Relative_Identifier(&Unresolved_Jump_Relative_Identifiers, ROM_Index, (unsigned char*)T[1].Representation);
+					}
 
 					ROM_Index++;
 

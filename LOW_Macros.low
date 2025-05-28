@@ -6,6 +6,9 @@ macro INTERRUPT_ENABLE_REGISTER $FFFF;
 macro BACKGROUND_SCROLL_X_REGISTER $FF43;
 macro BACKGROUND_SCROLL_Y_REGISTER $FF42;
 
+macro WINDOW_SCROLL_X_REGISTER $FF4B;
+macro WINDOW_SCROLL_Y_REGISTER $FF4A; # Note that Wx = 7 and Wy = 0 correspond to top-left of screen
+
 macro BACKGROUND_PALETTE_REGISTER $FF47;
 	# Every 2-bits of this is the colour value of colour values 0-3
 

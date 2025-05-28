@@ -43,5 +43,6 @@
     <None Include="Test_Program\SIN_Table.td" />
     <None Include="Player_Sprite_And_Background_Test\Player_Tiles.td" />
     <None Include="Sprite_Test\Player_Tiles.td" />
+    <None Include="Sprite_Test\SIN_Table.td" />
   </ItemGroup>
 </Project>
