@@ -147,6 +147,7 @@
     <None Include="LOW_Multiplication.low" />
     <None Include="Player_Sprite_And_Background_Test\Player_Tiles.td" />
     <None Include="Player_Tiles.td" />
+    <None Include="Robot_Gaenger\Memory_Copy.low" />
     <None Include="SIN_Table.td" />
     <None Include="Sprite_Test\Player_Tiles.td" />
     <None Include="Sprite_Test\SIN_Table.td" />

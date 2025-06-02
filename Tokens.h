@@ -49,7 +49,7 @@ enum Token_Enum
 
 	T_NUMBER,
 	T_HEX_LITERAL,
-	T_STRING_QUOTE,
+	T_STRING_LITERAL,
 
 	T_SEMI,
 
@@ -422,6 +422,65 @@ unsigned char Token_Check_Hex_Literal(Vector* Target_Tokens, const Vector* File_
 	return 0;
 }
 
+unsigned char Ascii_To_Code(unsigned char Character)
+{
+	if ('A' <= Character && Character <= 'Z')
+		return Character + 0x0Au - 'A';
+	else if ('0' <= Character && Character <= '9')
+		return Character - '0';
+
+	return 0x2Du;
+}
+
+unsigned char* Hex_Literal_From_Character(unsigned char Character)
+{
+	Vector Hex_Literal_Byte = { 0, 0, 0 };
+
+	unsigned char Hex_Digits[0x10] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+
+	unsigned char Character_Code = 128u + Ascii_To_Code(Character);
+
+	Vector_Resize(&Hex_Literal_Byte, 4u);
+
+	Hex_Literal_Byte.Data[0] = '$';
+	Hex_Literal_Byte.Data[3] = 0u;
+
+	Hex_Literal_Byte.Data[1] = Hex_Digits[Character_Code >> 4u];
+	Hex_Literal_Byte.Data[2] = Hex_Digits[Character_Code & 0xFu];
+
+	return Hex_Literal_Byte.Data;
+}
+
+unsigned char Token_Check_String_Literal(Vector* Target_Tokens, const Vector* File_Contents, unsigned long Index)
+{
+	// This will detect a string literal. If there is one, it replaces each character with a hex literal byte.
+	// Moves the index to the end of the string
+	// (String can't be more than 253 characters long)
+
+	Token T;
+
+	unsigned char Delta = 0;
+
+	T.Token = T_HEX_LITERAL;
+
+	if (File_Contents->Data[Index] == '\"')
+	{
+		do
+		{
+			Index++;
+			Delta++;
+
+			T.Representation = Hex_Literal_From_Character(File_Contents->Data[Index]);
+
+			Vector_Push_Memory(Target_Tokens, &T, sizeof(Token));
+		} while (File_Contents->Data[Index + 1] != '\"');
+
+		return Delta + 2;
+	}
+
+	return 0u;
+}
+
 unsigned char Token_Check_Registers(Vector* Target_Tokens, const Vector* File_Contents, unsigned long Index)
 {
 	unsigned char Max_Length = 0;
@@ -618,6 +677,12 @@ unsigned char Tokenise(Vector* Target_Tokens, const char* File_Directory)
 		if (File_Contents.Data[Index] == ' ' || File_Contents.Data[Index] == '\t' || File_Contents.Data[Index] == '\n')	// Whitespace, we don't care!
 		{
 			Index++;
+			continue;
+		}
+
+		if (Delta = Token_Check_String_Literal(Target_Tokens, &File_Contents, Index))
+		{
+			Index += Delta;
 			continue;
 		}
 

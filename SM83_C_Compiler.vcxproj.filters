@@ -44,5 +44,6 @@
     <None Include="Player_Sprite_And_Background_Test\Player_Tiles.td" />
     <None Include="Sprite_Test\Player_Tiles.td" />
     <None Include="Sprite_Test\SIN_Table.td" />
+    <None Include="Robot_Gaenger\Memory_Copy.low" />
   </ItemGroup>
 </Project>

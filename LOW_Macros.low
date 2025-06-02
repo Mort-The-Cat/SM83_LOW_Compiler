@@ -52,6 +52,7 @@ macro OAM $FE00;
 	# byte 1 is x-position + 8
 	# byte 2 is tile index
 	# byte 3 are the flags
+		# bit 7 is the priority bit (set this to decrease object priority)
 		# bit 6 is the Y flip
 		# bit 5 is the X flip
 		# bit 4 is the palette (palette 0 or palette 1)
@@ -63,6 +64,17 @@ macro OAM $FE00;
 # When something is pushed to the stack, the stack pointer *decreases*
 
 # Hence, the SP needs to be somewhere like CFFF for example
+
+# However, I think it'd be good if the OAM buffer was stored at C000-C09F.
+# This'd mean that we'd have more memory in the "variable" RAM
+# This'd only become a problem if the stack completely overflows beyond C0A0 - CFFF
+
+# D000 onwards can be nicely used for RAM variables.
+# e.g. player x/y, camera x/y, current level, enemies, bullets, etc, etc
+# This gives $1000 (4,096) bytes for these global variables
+# We can probably reduce the size of the stack though
+
+macro HRAM $FF80; # $FF80 - $FFFE
 
 macro VRAM_BLOCK_0 $8000;
 macro VRAM_BLOCK_1 $8800;
@@ -76,10 +88,16 @@ macro VBLANK_LY $94;		# This is the LY value at which VBLANK begins
 macro CONTROLLER_REGISTER $FF00;
 	# bit 5 - clear this bit if you want the Start/Select/  B /    A buttons
 	# bit 4 - clear this bit if you want the Down /  Up  /Left/Right buttons
+	# bit 3 - Start		/ Down
+	# bit 2 - Select	/ Up
+	# bit 1 - B			/ Left
+	# bit 0 - A			/ Right
+
+	# Whichever  button is read depends on which bit has just been cleared.
+	# Takes a few clock cycles for the register to toggle properly.
+
 
 # Instructions:
-
-
 
 # >>
 # This operation keeps the most significant bit the same

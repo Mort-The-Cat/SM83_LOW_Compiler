@@ -70,7 +70,7 @@ subroutine Update_Title_Screen_Window_Midframe $0730
 
 	A ^= A;
 
-	[$FF00 + LCD_STATUS_REGISTER] = A;
+	[$FF00 + LCD_STATUS_REGISTER] = A; # Stops all HBlank and LYC interrupts
 
 	returni;
 }
@@ -85,6 +85,7 @@ subroutine Title_Screen_STAT_Interrupt $07B0
 	B = $08;											# 074F - 0750
 	A = [$FF00 + LCDY_REGISTER];
 	A += A;
+	A += A;
 	A += L;
 	C = A;
 
@@ -94,7 +95,7 @@ subroutine Title_Screen_STAT_Interrupt $07B0
 
 	A &= $0F;
 
-	A >>>= 1;
+	# A >>= 1;
 
 	jump not_zero Local_Conditional_Add;
 
@@ -112,7 +113,7 @@ subroutine STAT_Interrupt $0048
 	jump Title_Screen_STAT_Interrupt;
 }
 
-subroutine Vblank_Procedure $06A8
+subroutine Vblank_Procedure $0900
 {
 	HL++;
 
@@ -136,6 +137,8 @@ subroutine Vblank_Procedure $06A8
 	A = $48;
 
 	[$FF00 + LCD_STATUS_REGISTER] = A; # We want LDY interrupt AND HBlank interrupt
+
+	#
 
 	returni;
 }
@@ -229,6 +232,11 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 	A ^= A;
 	[$FF00 + LCDC_REGISTER] = A; # This turns off the LCDC and PPU momentarily
 
+	HL = OAM;
+	DE = $019A;
+
+	call Memset;
+
 	HL = Alphabet_Tile_Data;
 	BC = $9000;
 	DE = Alphabet_Tile_Data_Size;
@@ -249,6 +257,12 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 
 	DE = Title_Tile_Data_Size;
 	HL = Title_Tile_Data;
+
+	call Memcpy;
+
+	BC = $8320;
+	HL = Title_Tile_Data;
+	DE = Title_Tile_Data_Size;
 
 	call Memcpy;
 
@@ -292,7 +306,52 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 
 	call Init_DMA;
 
-	A = $E1;
+	#
+	HL = OAM;
+
+	A = $20;
+	[HL++] = A;
+	A = $08;
+	[HL++] = A;
+	A = $32;
+	[HL++] = A;
+	HL++;
+
+	A = $28;
+	[HL++] = A;
+	A = $08;
+	[HL++] = A;
+	A = $34;
+	[HL++] = A;
+	HL++;
+
+	A = $30;
+	[HL++] = A;
+	A = $08;
+	[HL++] = A;
+	A = $34;
+	[HL++] = A;
+	HL++;
+
+	A = $38;
+	[HL++] = A;
+	A = $08;
+	[HL++] = A;
+	A = $34;
+	[HL++] = A;
+	HL++;
+
+	A = $40;
+	[HL++] = A;
+	A = $08;
+	[HL++] = A;
+	A = $33;
+	[HL++] = A;
+	HL++;
+
+	#
+
+	A = $E3;
 
 	[$FF00 + LCDC_REGISTER] = A;	
 		# LCD/PPU ON
@@ -307,6 +366,8 @@ subroutine Init_Test_Graphics Init_Test_Graphics
 	A = $48;
 
 	[$FF00 + LCD_STATUS_REGISTER] = A;
+
+	#
 
 	HL = $0000;
 

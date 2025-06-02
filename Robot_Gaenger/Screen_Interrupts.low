@@ -1,0 +1,116 @@
+macro LCD_Interrupt_Routine_Flags $C0A0;
+# This byte is used to tell the CPU which 
+# LCD interrupt routine we should use
+
+subroutine Window_Hide_LCD_Routine $0720
+{
+	A = $FF;								# 0710 - 0711
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;	# 0712 - 0713
+
+	A ^= A;									# 0714
+
+	[$FF00 + LCD_STATUS_REGISTER] = A;		# 0715 - 0716
+
+	pop HL;									# 0717
+
+	returni;								# 0718
+}
+
+macro Frame_Counter_Register $C0A2;
+
+subroutine Title_Screen_LCD_Interrupt_Routine $06FA
+{
+	A = [$FF00 + LCD_STATUS_REGISTER];		
+	A &= $02;								
+	jump not_zero Window_Hide_LCD_Routine;	
+
+	HL = Frame_Counter_Register;
+
+	A = [$FF00 + LCDY_REGISTER];
+	A += [HL];
+	A += A;									
+	A += A;									
+	A += A;									
+	swap A;									
+	A &= $0F;								
+
+	jump not_zero Local_Conditional_Add;	
+
+	A++;									
+
+	label Local_Conditional_Add;
+
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;	
+
+	pop HL;									
+	returni;							
+}
+
+subroutine LCD_Jump $0048
+{
+	push HL;
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL].0;
+	jump Title_Screen_LCD_Interrupt_Routine;
+}
+
+macro VBlank_Interrupt_Routine_Flags $C0A1;
+# This byte is used to tell the CPU which
+# VBlank interrupt routine we should use
+
+subroutine Title_Screen_VBlank_Routine $0930
+{
+	# We want all of the title screen logic to occur during VBlank
+	# this is because while the PPU is drawing, the HBlank routines
+	# are fairly demanding
+
+	A = $48;
+	
+	[$FF00 + LCD_STATUS_REGISTER] = A;
+
+	A = $10;
+	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
+
+	A = $07;
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+	HL = Frame_Counter_Register;
+	[HL]++;
+
+	A = [HL];
+
+	A >>>= 1;
+	A >>>= 1;
+
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+
+	A >>>= 1;
+	A >>>= 1;
+
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	push BC;
+	call DMA_Transfer;
+	pop BC;
+
+	pop HL;
+
+	returni;
+}
+
+subroutine VBlank_Handler $07F0
+{
+	push HL;							# 0000
+	HL = VBlank_Interrupt_Routine_Flags;# 0001 - 0003
+	[HL].0;								# 0004 - 0005
+	# jump 
+
+	jump Title_Screen_VBlank_Routine;	# 0006 - 0008
+
+	returni;							# 0009
+}
+
+subroutine VBlank_Jump $0040
+{
+	jump VBlank_Handler;
+}

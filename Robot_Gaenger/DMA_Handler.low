@@ -1,0 +1,42 @@
+subroutine DMA_Instructions $0890
+{
+	[$FF00 + C] = A;		# 2 cycle / 06E9
+				# Begins DMA transfer
+	label DMA_Loop;
+	B--;					# 1 cycle  / 06EA
+	jump not_zero DMA_Loop;	# 3 cycles / 06EB - 06EC
+	return;					# 4 cycles / 06ED
+}
+
+macro HRAM_DMA_Function $FF80;
+
+subroutine Init_HRAM_DMA_Function $084A
+{
+	HL = DMA_Instructions;	# 06F0 - 06F2
+	BC = HRAM_DMA_Function;	# 06F3 - 06F5
+	DE = $05;				# 06F6 - 06F8
+
+	call Memcpy;			# 06F9 - 06FB
+
+	return;					# 06FC
+}
+
+subroutine DMA_Transfer $0880
+{
+	A = $C0;
+	BC = $2946;
+
+	# $0029 is the counter for the DMA transfer
+	# $FF46 is the location of the DMA register
+	# $C000 is the location in memory of the DMA OAM buffer
+	
+	jump HRAM_DMA_Function;
+}
+
+
+# To call DMA, these are the following instructions: 
+# (Only do during VBlank or when the LCD is off)
+
+# A = $C0; # This is the location of the DMA OAM buffer
+# [$FF00 + DMA_REGISTER] = A;
+# call HRAM_DMA_Function;

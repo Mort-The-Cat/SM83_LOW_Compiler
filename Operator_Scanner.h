@@ -64,6 +64,16 @@ void Place_CB_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index, uns
 	ROM[(*ROM_Index)++] = Opcode;
 }
 
+void Place_Get_Bit_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index, unsigned int* ROM_Index, const Vector* Identifiers, const Vector* Target_Tokens, unsigned int Opcode)
+{
+	ROM[(*ROM_Index)++] = 0xCBu;
+	ROM[(*ROM_Index)++] = Opcode += 0x08u * Get_Value_From_String(Get_Representation(Target_Tokens, *Token_Index));
+	// This is how we 
+}
+
+#define Get_Bit_Instruction(Register, Opcode)\
+	{ (const unsigned char[]){ Register, T_DOT, T_NUMBER, T_SEMI }, 4, Opcode, Place_Get_Bit_Opcode_Function }
+
 #define Bit_Shift_INSTRUCTION(Instruction, Register, Opcode)\
 	{ (const unsigned char[]){ Register, Instruction, T_NUMBER, T_SEMI }, 4, Opcode, Place_CB_Opcode_Function },\
 	{ (const unsigned char[]) { Register, Instruction, T_HEX_LITERAL, T_SEMI }, 4, Opcode, Place_CB_Opcode_Function }
@@ -204,6 +214,15 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 	Token_Pattern Patterns[] =
 	{
 		INSTRUCTION_DEFINER(LD, 0x40u),
+
+		Get_Bit_Instruction(T_REGISTER_B, 0x40),
+		Get_Bit_Instruction(T_REGISTER_C, 0x41),
+		Get_Bit_Instruction(T_REGISTER_D, 0x42),
+		Get_Bit_Instruction(T_REGISTER_E, 0x43),
+		Get_Bit_Instruction(T_REGISTER_H, 0x44),
+		Get_Bit_Instruction(T_REGISTER_L, 0x45),
+		{ (const unsigned char[]) { T_OPEN_SQ, T_REGISTER_PAIR_HL, T_CLOSE_SQ, T_DOT, T_NUMBER, T_SEMI }, 6, 0x46, Place_Get_Bit_Opcode_Function },
+		Get_Bit_Instruction(T_REGISTER_A, 0x47),
 
 		{ (const unsigned char[]) { T_OPEN_SQ, T_REGISTER_C, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 6, 0xE2u, Place_Opcode_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_REGISTER_C, T_CLOSE_SQ, T_SEMI }, 6, 0xF2u, Place_Opcode_Function },
