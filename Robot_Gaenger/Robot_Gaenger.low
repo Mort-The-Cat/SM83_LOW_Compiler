@@ -58,6 +58,11 @@ subroutine Init_Title_Screen $0730
 
 	call Init_HRAM_DMA_Function;
 
+	HL = $C000;
+	DE = $00A0;
+	B = $00;
+	call Memset;				# Clears OAM buffer
+
 	A = $80;
 	[$FF00 + LCDC_REGISTER] = A;
 
@@ -154,6 +159,12 @@ subroutine Init_Title_Screen $0730
 	D--;
 	jump not_zero Local_Fill_Background_Tilemap;
 
+	# 
+
+	call Init_Title_Screen_Sprites;
+
+	# Place static title screen sprites in OAM
+
 	# Set all of the palette information
 
 	A = $E4;
@@ -172,7 +183,7 @@ subroutine Init_Title_Screen $0730
 
 	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
 
-	A = $46;
+	A = $47;
 
 	[$FF00 + LYC_REGISTER] = A;
 

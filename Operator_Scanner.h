@@ -230,6 +230,8 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 		{ (const unsigned char[]) { T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_REGISTER_C, T_CLOSE_SQ, T_EQUALS, T_REGISTER_A, T_SEMI }, 8, 0xE2u, Place_Opcode_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_EQUALS, T_OPEN_SQ, T_HEX_LITERAL, T_PLUS_EQUALS, T_REGISTER_C, T_CLOSE_SQ, T_SEMI }, 8, 0xF2u, Place_Opcode_Function },
 
+		{ (const unsigned char[]) { T_REGISTER_A, T_FLIP_BITS, T_REGISTER_A, T_SEMI }, 4, 0x2Fu, Place_Opcode_Function },
+
 		PUSH_POP_INSTRUCTIONS(T_POP, 0x00u),
 		PUSH_POP_INSTRUCTIONS(T_PUSH, 0x04u),
 
@@ -245,6 +247,9 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 		WORD_ASSIGN_INSTRUCTION(T_REGISTER_PAIR_DE, 0x11u),
 		WORD_ASSIGN_INSTRUCTION(T_REGISTER_PAIR_HL, 0x21u),
 		WORD_ASSIGN_INSTRUCTION(T_SP, 0x31u),
+
+		{ (const unsigned char[]) { T_REGISTER_PAIR_HL, T_EQUALS, T_SP, T_PLUS_EQUALS, T_HEX_LITERAL, T_SEMI }, 6, 0xF8u, Place_Operand_Opcode_Function },
+		{ (const unsigned char[]) { T_SP, T_PLUS_EQUALS, T_HEX_LITERAL, T_SEMI }, 4, 0xE8u, Place_Operand_Opcode_Function },
 
 		{ (const unsigned char[]) { T_REGISTER_A, T_ROTATE_LEFT, T_NUMBER, T_SEMI }, 4, 0x07u, Place_Opcode_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_CARRY_LEFT_ROTATE, T_NUMBER, T_SEMI }, 4, 0x17u, Place_Opcode_Function },

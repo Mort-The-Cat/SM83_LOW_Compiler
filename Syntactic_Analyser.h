@@ -357,7 +357,7 @@ void Generate_Byte_Code(const Vector* Tokens)
 			break;
 
 		case T_JUMP:
-			Jump_Conditions = 2 - (T[1].Token == T_NUMBER || T[1].Token == T_HEX_LITERAL || T[1].Token == T_ID);
+			Jump_Conditions = 2 - (T[1].Token == T_NUMBER || T[1].Token == T_HEX_LITERAL || T[1].Token == T_ID || T[1].Token == T_REGISTER_PAIR_HL);
 
 			//if (T[Jump_Conditions].Token == T_ID)
 			//{

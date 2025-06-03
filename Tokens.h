@@ -164,7 +164,7 @@ const Token Compiler_Tokens[] =
 	[T_MINUS_EQUALS] = { T_MINUS_EQUALS, "-=" },
 	[T_EQUALS] = { T_EQUALS, "=" },
 	[T_EQUALS_EQUALS] = { T_EQUALS_EQUALS, "==" },
-	[T_FLIP_BITS] = { T_FLIP_BITS, "~" },
+	[T_FLIP_BITS] = { T_FLIP_BITS, "~=" },
 	[T_COMPARE] = { T_COMPARE, "<"},
 	[T_ARITHMETIC_RIGHT_SHIFT] = { T_ARITHMETIC_RIGHT_SHIFT, ">>="},
 	[T_LOGICAL_RIGHT_SHIFT] = { T_LOGICAL_RIGHT_SHIFT, ">>>="},

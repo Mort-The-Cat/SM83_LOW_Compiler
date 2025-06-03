@@ -33,7 +33,6 @@ subroutine DMA_Transfer $0880
 	jump HRAM_DMA_Function;
 }
 
-
 # To call DMA, these are the following instructions: 
 # (Only do during VBlank or when the LCD is off)
 

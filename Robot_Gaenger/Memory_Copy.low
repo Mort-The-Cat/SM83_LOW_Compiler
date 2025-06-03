@@ -22,9 +22,9 @@ subroutine Memcpy $0000
 
 subroutine Memset $0010
 {
-	byte B : Value;
-	word HL : Destination;
-	byte DE : Length;
+	byte Value : B;
+	word Destination : HL;
+	byte Length : DE;
 
 	label Memset_Loop;
 	A = B;						# 0010
@@ -35,6 +35,16 @@ subroutine Memset $0010
 	jump not_zero Memset_Loop;	# 0015 - 0016
 
 	return;						# 0017
+}
+
+subroutine Triangle_Wave $0018
+{
+	byte A : Value;
+	A < $09;		# 0018
+	return carry;	# 0019
+	A ~= A;			# 001A
+	A += $12;		# 001B - 001C
+	return;		# 001D
 }
 
 subroutine Min_Max $0030
