@@ -1,0 +1,199 @@
+macro Title_Text_Left_Pad_Graphics_Size $07;
+data Title_Text_Left_Pad $1100
+{
+	$10 $00 $AE
+	$18 $00 $B0
+	$20 $00 $B0
+	$28 $00 $B0
+	$30 $00 $B0
+	$38 $00 $B0
+	$40 $00 $AF
+}
+
+macro Robot_Steh_Graphics_Size $04;
+data Robot_Steh $1120
+{
+	$00 $01
+	$02 $03
+}
+
+macro Press_Start_Graphics_Size $0A;
+data Press_Start $1130
+{
+	$00 $00 "P"
+	$00 $08 "R"
+	$00 $10 "E"
+	$00 $18 "S"
+	$00 $20 "S"
+
+	$00 $38 "S"
+	$00 $40 "T"
+	$00 $48 "A"
+	$00 $50 "R"
+	$00 $58 "T"
+}
+
+subroutine Place_Meta_Sprite_In_OAM $09D0
+{
+	# Before this function is called, push object Y and X to the stack.
+	# Then, push sprite flags
+
+	# SP + $00 and SP + $01 are the return function pointer
+
+	# SP + $02 is just padding
+	# SP + $03 is sprite flags
+	# SP + $04 is the X value
+	# SP + $05 is the Y value
+	# SP + ... are important values we want to return to after the function
+
+	# DE is the sprite information pointer
+		# This only includes the 4 tiles
+	# BC will be the destination pointer into the OAM buffer
+
+	# HL will grab stuff off the stack for us
+
+	BC = $C0A3;
+	A = [BC];
+	L = A;
+	A += $10;	# 4 objects x 4 bytes per object
+	[BC] = A;	# Increments the OAM Buffer Counter by $10
+	C = L;		# BC is the destination pointer
+
+	HL = SP + $05;	# Y value
+	A = [HL--];
+	[BC] = A;		# Write Y value
+	C++;
+	A = [HL--];
+	[BC] = A;		# Write X value
+	C++;
+	A = [DE];
+	DE++;
+	[BC] = A;		# Write tile
+	C++;
+	A = [HL++];
+	[BC] = A;		# Write sprite flags
+	C++;
+
+	HL++;
+
+	A = [HL--];
+	[BC] = A;		# Write Y val
+	C++;
+	A = [HL--];
+	A += $08;
+	[BC] = A;		# Write X + $08 val
+	C++;
+	A = [DE];
+	DE++;
+	[BC] = A;		# Write tile
+	C++;
+	A = [HL++];
+	[BC] = A;		# Write sprite flags
+	C++;
+
+	HL++;
+
+	A = $08;
+	A += [HL];
+	[HL--] = A;		# Precalculates Y + $08 value
+	[BC] = A;		# Write Y + $08 val
+	C++;
+	A = [HL--];
+	[BC] = A;		# Write X
+	C++;
+	A = [DE];
+	DE++;
+	[BC] = A;		# Write tile
+	C++;
+	A = [HL++];
+	[BC] = A;		# Write sprite flags
+	C++;
+
+	HL++;
+
+	A = [HL--];
+	[BC] = A;		# Write Y + $08 val
+	C++;
+	A = [HL--];
+	A += $08;		
+	[BC] = A;		# Write X + $08 val
+	C++;
+	A = [DE];
+	[BC] = A;
+	C++;
+	A = [HL];
+	[BC] = A;
+
+
+	#
+
+	pop HL;
+	SP += $04;
+
+	jump HL;
+}
+
+subroutine Place_Sprites_In_OAM $1000
+{
+	# Before this function is called, push object Y and X to the stack.
+	# Then, push sprite flags and the number of sprites to the stack
+
+	# SP + $00 and SP + $01 are the return function pointer
+
+	# SP + $02 is counter
+	# SP + $03 is sprite flags
+	# SP + $04 is the X value
+	# SP + $05 is the Y value
+	# SP + ... are important values we want to return to after the function
+
+	# DE is the sprite information pointer
+		# This includes delta X, delta Y, and tile
+	# BC will be the destination pointer into the OAM buffer
+
+	# HL will grab stuff off the stack for us
+
+	BC = $C0A3;
+	A = [BC];
+	HL = SP + $02;	# Counter value (number of tiles we're about to assign)
+	H = [HL];		# Gets counter
+	L = A;			# Saves current OAM buffer counter
+	H <<>= 1;
+	H <<>= 1;
+	A += H;			# Increments OAM buffer counter by the counter
+	[BC] = A;		# Saves that value
+	C = L;			# BC is the destination pointer we want to write to
+
+	label Sprite_Assign_Loop;
+	HL = SP + $05;	# Pointer to Y value
+	A = [DE];		# Gets delta Y
+	DE++;			# next delta
+	A += [HL];		# Adds Y value
+	HL--;			# next stack val
+	[BC] = A;		# Assigns Y value of sprite
+	C++;			# Increments destination pointer
+
+	A = [DE];		# Gets delta X
+	DE++;			# next sprite data
+	A += [HL];		# Adds X value
+	HL--;			# next stack val
+	[BC] = A;		# Assigns X value of sprite
+	C++;			# Increments destination pointer
+
+	A = [DE];		# Gets sprite tile
+	DE++;			# Next sprite data
+	[BC] = A;		# Sets sprite tile
+	C++;			# increments destination pointer
+	A = [HL--];		# Gets sprite flags
+	[BC] = A;		# Sets sprite flags
+	C++;			# Increments destination pointer
+
+	[HL]--;			# Decrements counter
+	jump not_zero Sprite_Assign_Loop;
+
+	pop HL;		# Gets function pointer, reduces stack
+	SP += $04;	# This is done to reduce the stack to where it was before 
+	
+	# (we don't need to grab the values to any register, saving time)
+
+	jump HL;	# Returns
+}

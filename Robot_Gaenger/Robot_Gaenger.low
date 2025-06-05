@@ -9,7 +9,11 @@ macro DMA_OAM_BUFFER $C000;
 
 file Robot_Gaenger/DMA_Handler.low;
 
+file Robot_Gaenger/Meta_Sprite_Handling.low;
+
 file Robot_Gaenger/Screen_Interrupts.low;
+
+file Robot_Gaenger/Title_Screen_Handler.low;
 
 # Memory from 0120 onwards is fairly accessable!
 
@@ -36,25 +40,72 @@ data Robot_Graphics_Data $04F8
 file Robot_Gaenger/Robot_Graphics.td;		# $04F8 - $06F7
 
 macro Title_Bot_Letters_Size $0046;
-data Title_Bot_Letters_Data $0800
+data Title_Bot_Letters_Data $1400
 file Robot_Gaenger/Title_BOT_Letters.tm;
 
 # Routine data can begin from 06F8 :D
 
-subroutine Title_Screen_Loop_Routine $0900
+subroutine Title_Screen_Loop_Routine $1300
 {
 	label Wait_For_VBlank_Loop;
 
 	A = [$FF00 + LCDY_REGISTER];
 	A < $91;
+	jump carry Wait_For_VBlank_Loop;
+
+	C = CONTROLLER_REGISTER;
+	A = CONTROLLER_SSBA_FLAG;
+	[$FF00 + C] = A;
+	A = [$FF00 + C];
+	A = [$FF00 + C];
+	A = [$FF00 + C];
+	A = [$FF00 + C];	# It's standard to get the input a couple of times to allow time for the value to stabilise
+	A = [$FF00 + C];
+
+	A &= CONTROLLER_BUTTON_START;
+
 	jump not_zero Wait_For_VBlank_Loop;
 
-	jump Wait_For_VBlank_Loop;
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL] = $01;							# Use the non-wavy HBlank routine
+
+	A ^= A;
+	[OAM_Buffer_Counter_Start] = A;
+
+	label Test_Loop;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump not_carry Test_Loop;		# This waits for VBlank to end
+
+	label Wait_Until_Next_Scanline;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_Until_Next_Scanline;	# This waits until VBlank
+
+	# Increment the window register thingy once every frame!!
+
+	C = WINDOW_SCROLL_Y_REGISTER;
+	A = [$FF00 + C];
+	A < $91;						# If carry, Window_Scroll_Y_Register is off screen
+	jump not_carry Test_Loop;		# If that's the case, stop scrolling it
+
+	# Otherwise, decrement the global animation counter
+	HL = Global_Animation_Counter;
+	[HL]--;
+	jump not_zero Test_Loop;		# If the timer hasn't run out yet, no worries!
+	A++;
+	[$FF00 + C] = A;				# Increment the Window_Scroll_Y_Register
+	[HL] = $10;						# Reset the global animation counter
+
+	jump Test_Loop;
 }
 
 subroutine Init_Title_Screen $0730
 {
 	SP = $CFFF;	# This places the stack where we want it to go
+
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL] = $00;							# Use the wavy HBlank routine
 
 	call Init_HRAM_DMA_Function;
 
@@ -110,6 +161,10 @@ subroutine Init_Title_Screen $0730
 		A |= E;
 	jump not_zero Load_Parallax_Brick_Background_Loop;
 
+	HL = $81C0;
+	DE = $0040;
+	call Memcpy;	# This copies the Robot_Graphics bricks into the 2nd VRAM Block
+
 	HL = VRAM_TILEM_1;
 	DE = $0020;
 	B = $AE;	# Top tile thereof
@@ -163,9 +218,15 @@ subroutine Init_Title_Screen $0730
 
 	call Init_Title_Screen_Sprites;
 
+	A = [OAM_Buffer_Counter];
+	[OAM_Buffer_Counter_Start] = A;
+
 	# Place static title screen sprites in OAM
 
 	# Set all of the palette information
+	
+	A = $10;
+	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
 
 	A = $E4;
 
@@ -173,7 +234,7 @@ subroutine Init_Title_Screen $0730
 
 	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
 
-	swap A;
+	A++;
 
 	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
 

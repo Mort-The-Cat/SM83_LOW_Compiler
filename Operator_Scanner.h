@@ -45,7 +45,7 @@ void Place_Operand_Opcode_Function(unsigned char* ROM, unsigned int* Token_Index
 
 unsigned char* Get_Representation(const Vector* Target_Tokens, unsigned int Token_Index)
 {
-	while (((Token*)(Target_Tokens->Data + (Token_Index)))->Token != T_HEX_LITERAL)
+	while (((Token*)(Target_Tokens->Data + (Token_Index)))->Token != T_HEX_LITERAL && ((Token*)(Target_Tokens->Data + (Token_Index)))->Token != T_NUMBER)
 		Token_Index-= sizeof(Token);
 
 	return ((Token*)(Target_Tokens->Data + (Token_Index)))->Representation;

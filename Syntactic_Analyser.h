@@ -476,6 +476,11 @@ void Generate_Byte_Code(const Vector* Tokens)
 			Token_Index += 2 * sizeof(Token);
 			break;
 
+		case T_DISABLEI:
+			ROM[ROM_Index++] = 0xF3u;
+			Token_Index += 2 * sizeof(Token);
+			break;
+
 		case T_BYTE:
 		case T_WORD:
 			Token_Index += sizeof(Token) * 5;

@@ -9,85 +9,10 @@ macro VBlank_Interrupt_Routine_Flags $C0A1;
 macro Frame_Counter_Register $C0A2;
 
 macro OAM_Buffer_Counter $C0A3;
+macro OAM_Buffer_Counter_Start $C0A5;		# This indicates the start of the nonstatic OAM buffer.
+											# If there aren't any static objects onscreen, this can be set to zero
 
-#
-
-macro Title_Text_Left_Pad_Graphics_Size $07;
-data Title_Text_Left_Pad $1100
-{
-	$10 $00 $AE
-	$18 $00 $B0
-	$20 $00 $B0
-	$28 $00 $B0
-	$30 $00 $B0
-	$38 $00 $B0
-	$40 $00 $AF
-}
-
-subroutine Place_Meta_Sprite_In_OAM $1000
-{
-	# Before this function is called, push object Y and X to the stack.
-	# Then, push sprite flags and the number of sprites to the stack
-
-	# SP + $00 and SP + $01 are the return function pointer
-
-	# SP + $02 is counter
-	# SP + $03 is sprite flags
-	# SP + $04 is the X value
-	# SP + $05 is the Y value
-	# SP + ... are important values we want to return to after the function
-
-	# DE is the sprite information pointer
-		# This includes delta X, delta Y, and tile
-	# BC will be the destination pointer into the OAM buffer
-
-	# HL will grab stuff off the stack for us
-
-	BC = OAM_Buffer_Counter;
-	A = [BC];
-	HL = SP + $02;	# Counter value
-	H = [HL];		# Gets counter
-	L = A;			# Saves current OAM buffer counter
-	A += H;			# Increments OAM buffer counter by the counter
-	[BC] = A;		# Saves that value
-	C = L;			# BC is the destination pointer we want to write to
-
-	label Sprite_Assign_Loop;
-	HL = SP + $05;	# Pointer to Y value
-	A = [DE];		# Gets delta Y
-	DE++;			# next delta
-	A += [HL];		# Adds Y value
-	HL--;			# next stack val
-	[BC] = A;		# Assigns Y value of sprite
-	C++;			# Increments destination pointer
-
-	A = [DE];		# Gets delta X
-	DE++;			# next sprite data
-	A += [HL];		# Adds X value
-	HL--;			# next stack val
-	[BC] = A;		# Assigns X value of sprite
-	C++;			# Increments destination pointer
-
-	A = [DE];		# Gets sprite tile
-	DE++;			# Next sprite data
-	[BC] = A;		# Sets sprite tile
-	C++;			# increments destination pointer
-	A = [HL--];		# Gets sprite flags
-	[BC] = A;		# Sets sprite flags
-	C++;			# Increments destination pointer
-
-	[HL]--;			# Decrements counter
-	jump not_zero Sprite_Assign_Loop;
-
-	pop HL;		# Gets function pointer, reduces stack
-	SP += $04;	# This is done to reduce the stack to where it was before 
-	
-	# (we don't need to grab the values to any register, saving time)
-
-	jump HL;	# Returns
-}
-
-#
+macro Global_Animation_Counter $C0A4;		# This is used for things like the title screen
 
 subroutine Window_Hide_LCD_Routine $0720
 {
@@ -101,6 +26,23 @@ subroutine Window_Hide_LCD_Routine $0720
 	pop HL;									# 0717
 
 	returni;								# 0718
+}
+
+subroutine Title_Screen_Simple_LCD_Interrupt_Routine $1200
+{
+	A = [$FF00 + LCDY_REGISTER];
+	C = A;
+	A = [$FF00 + WINDOW_SCROLL_Y_REGISTER];
+	A += $37;
+	A < C;
+
+	jump zero Window_Hide_LCD_Routine;
+
+	A = $06;
+	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+	pop HL;
+	returni;
 }
 
 subroutine Title_Screen_LCD_Interrupt_Routine $06FA
@@ -140,7 +82,8 @@ subroutine LCD_Jump $0048
 	push HL;
 	HL = LCD_Interrupt_Routine_Flags;
 	[HL].0;
-	jump Title_Screen_LCD_Interrupt_Routine;
+	jump zero Title_Screen_LCD_Interrupt_Routine;
+	jump Title_Screen_Simple_LCD_Interrupt_Routine;
 }
 
 subroutine Init_Title_Screen_Sprites $0990
@@ -154,7 +97,14 @@ subroutine Init_Title_Screen_Sprites $0990
 	BC = Title_Text_Left_Pad_Graphics_Size;	# Sprite flags and number of sprites
 	push BC;
 	DE = Title_Text_Left_Pad;
-	call Place_Meta_Sprite_In_OAM;
+	call Place_Sprites_In_OAM;
+
+	BC = $6030;
+	push BC;
+	BC = $100A;
+	push BC;
+	DE = Press_Start;
+	call Place_Sprites_In_OAM;
 
 	return;
 }
@@ -169,9 +119,6 @@ subroutine Title_Screen_VBlank_Routine $0930
 	
 	[$FF00 + LCD_STATUS_REGISTER] = A;
 
-	A = $10;
-	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
-
 	A = $07;
 	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
 
@@ -179,6 +126,8 @@ subroutine Title_Screen_VBlank_Routine $0930
 	[HL]++;
 
 	A = [HL];
+
+	L = A;
 
 	A >>>= 1;
 
@@ -189,10 +138,22 @@ subroutine Title_Screen_VBlank_Routine $0930
 
 	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
 
-	A = Title_Text_Left_Pad_Graphics_Size;
+	H = $90;
+
+	A = [OAM_Buffer_Counter_Start];
 	[OAM_Buffer_Counter] = A;			# Resets OAM buffer counter
+
+	push HL;	# Y and X values
+	H = $00;
+	L = $04;
+	push HL;
+	DE = Robot_Steh;
+	call Place_Meta_Sprite_In_OAM;
+
+
 	
 	push BC;
+	call Clean_OAM_Buffer;
 	call DMA_Transfer;
 	pop BC;
 
@@ -201,14 +162,16 @@ subroutine Title_Screen_VBlank_Routine $0930
 	returni;
 }
 
-subroutine VBlank_Handler $07F0
+subroutine VBlank_Handler $0860
 {
 	push HL;							# 0000
 	HL = VBlank_Interrupt_Routine_Flags;# 0001 - 0003
 	[HL].0;								# 0004 - 0005
 	# jump 
 
-	jump Title_Screen_VBlank_Routine;	# 0006 - 0008
+	jump not_zero Title_Screen_VBlank_Routine;	# 0006 - 0008
+
+	jump Title_Screen_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
 
 	returni;							# 0009
 }

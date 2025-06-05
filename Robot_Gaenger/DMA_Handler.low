@@ -21,6 +21,25 @@ subroutine Init_HRAM_DMA_Function $084A
 	return;					# 06FC
 }
 
+subroutine Clean_OAM_Buffer $1500
+{
+	HL = $C0A3;
+	L = [HL];
+	B = $00;
+	C = $04;
+	A = $A0;
+	label Loop_OAM_Buffer_Cleaner;
+	[HL] = B;
+	L++;
+	L++;
+	L++;
+	L++;
+	A < L;
+	jump not_zero Loop_OAM_Buffer_Cleaner;	# Once we've reached the end of the OAM buffer,
+
+	return;									# Just return the function
+}
+
 subroutine DMA_Transfer $0880
 {
 	A = $C0;
