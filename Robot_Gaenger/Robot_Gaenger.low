@@ -43,6 +43,8 @@ macro Title_Bot_Letters_Size $0046;
 data Title_Bot_Letters_Data $1400
 file Robot_Gaenger/Title_BOT_Letters.tm;
 
+file Robot_Gaenger/Level_Handler.low;
+
 # Routine data can begin from 06F8 :D
 
 subroutine Title_Screen_Loop_Routine $1300
@@ -87,7 +89,7 @@ subroutine Title_Screen_Loop_Routine $1300
 	C = WINDOW_SCROLL_Y_REGISTER;
 	A = [$FF00 + C];
 	A < $91;						# If carry, Window_Scroll_Y_Register is off screen
-	jump not_carry Test_Loop;		# If that's the case, stop scrolling it
+	jump not_carry Game_Loop;		# If that's the case, stop scrolling it
 
 	# Otherwise, decrement the global animation counter
 	HL = Global_Animation_Counter;
@@ -95,7 +97,7 @@ subroutine Title_Screen_Loop_Routine $1300
 	jump not_zero Test_Loop;		# If the timer hasn't run out yet, no worries!
 	A++;
 	[$FF00 + C] = A;				# Increment the Window_Scroll_Y_Register
-	[HL] = $10;						# Reset the global animation counter
+	[HL] = $01;						# Reset the global animation counter
 
 	jump Test_Loop;
 }

@@ -272,9 +272,20 @@ void Generate_Byte_Code(const Vector* Tokens)
 		{
 		case T_DATA:
 		case T_SUBROUTINE:
-			ROM_Index = Get_Value_From_String((unsigned char*)T[2].Representation);				// Sets address to function/data reference
+			if (T[2].Token != T_HEX_LITERAL)
+			{
+				Byte.Code = ROM_Index;
+				Byte.Identifier = T[1].Representation;
 
-			Token_Index += sizeof(Token) * 3;									// increments past function/data address
+				Vector_Push_Memory(&Identifiers, (unsigned char*)&Byte, sizeof(Byte_Code));
+				Token_Index += sizeof(Token) * 2;
+			}
+			else
+			{
+				ROM_Index = Get_Value_From_String((unsigned char*)T[2].Representation);				// Sets address to function/data reference
+
+				Token_Index += sizeof(Token) * 3;									// increments past function/data address
+			}
 
 			Flags = T[0].Token;													// Is function/data flag
 			break;

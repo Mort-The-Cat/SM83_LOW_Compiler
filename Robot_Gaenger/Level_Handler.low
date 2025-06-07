@@ -1,0 +1,65 @@
+data Fade_To_White_Palettes $1600
+{
+	$E4 $E4
+		# 11 10 01 00
+	$A4 $A4
+		# 10 10 01 00
+	$94 $94
+		# 10 01 01 00
+	$50 $50
+		# 01 01 00 00
+	$40 $40
+		# 01 00 00 00
+	$00 $00
+		$ 00 00 00 00
+}
+
+subroutine Fade_To_White $1380
+{
+	# SP + $00 and SP + $01 are the return pointers
+	# SP + $FF can be used for useful stack data
+
+	DE = Fade_To_White_Palettes;
+	C = Global_Animation_Counter;
+	A = $10;
+	[$FF00 + Global_Animation_Counter] = A;
+
+	L = $0C;
+
+	label Wait_End_VBlank;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump not_carry Wait_End_VBlank;
+
+	label Wait_For_VBlank_Loop;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_For_VBlank_Loop;	# If LY < $91, continue loop!
+
+	A = [$FF00 + C];
+	A--;
+	[$FF00 + C] = A;
+	jump not_zero Wait_End_VBlank;		# If the counter is still going, 
+
+	# If the animation counter has run out,
+	A = $02;
+	[$FF00 + Global_Animation_Counter] = A;
+	E++;
+	A = [DE];
+	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
+	L--;
+	jump not_zero Wait_End_VBlank;
+
+
+	return;
+}
+
+subroutine Game_Loop $1580
+{
+	call Fade_To_White;
+
+	label Test;
+	jump Test;
+}

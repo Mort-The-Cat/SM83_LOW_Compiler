@@ -12,7 +12,7 @@ macro OAM_Buffer_Counter $C0A3;
 macro OAM_Buffer_Counter_Start $C0A5;		# This indicates the start of the nonstatic OAM buffer.
 											# If there aren't any static objects onscreen, this can be set to zero
 
-macro Global_Animation_Counter $C0A4;		# This is used for things like the title screen
+macro Global_Animation_Counter $FFFE;		# This is used for things like the title screen
 
 subroutine Window_Hide_LCD_Routine $0720
 {
@@ -23,6 +23,7 @@ subroutine Window_Hide_LCD_Routine $0720
 
 	[$FF00 + LCD_STATUS_REGISTER] = A;		# 0715 - 0716
 
+	pop AF;
 	pop HL;									# 0717
 
 	returni;								# 0718
@@ -30,23 +31,26 @@ subroutine Window_Hide_LCD_Routine $0720
 
 subroutine Title_Screen_Simple_LCD_Interrupt_Routine $1200
 {
+	push AF;
 	A = [$FF00 + LCDY_REGISTER];
-	C = A;
+	H = A;
 	A = [$FF00 + WINDOW_SCROLL_Y_REGISTER];
 	A += $37;
-	A < C;
+	A < H;
 
 	jump zero Window_Hide_LCD_Routine;
 
 	A = $06;
 	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
-
+	
+	pop AF;
 	pop HL;
 	returni;
 }
 
 subroutine Title_Screen_LCD_Interrupt_Routine $06FA
 {
+	push AF;
 	A = [$FF00 + LCD_STATUS_REGISTER];		
 	A &= $02;								
 	jump not_zero Window_Hide_LCD_Routine;	
@@ -73,6 +77,7 @@ subroutine Title_Screen_LCD_Interrupt_Routine $06FA
 
 	[$FF00 + WINDOW_SCROLL_X_REGISTER] = A;	
 
+	pop AF;
 	pop HL;									
 	returni;							
 }
@@ -115,6 +120,8 @@ subroutine Title_Screen_VBlank_Routine $0930
 	# this is because while the PPU is drawing, the HBlank routines
 	# are fairly demanding
 
+	push DE;
+
 	A = $48;
 	
 	[$FF00 + LCD_STATUS_REGISTER] = A;
@@ -143,20 +150,23 @@ subroutine Title_Screen_VBlank_Routine $0930
 	A = [OAM_Buffer_Counter_Start];
 	[OAM_Buffer_Counter] = A;			# Resets OAM buffer counter
 
+		
+	push BC;	# Just saving this for later
+
 	push HL;	# Y and X values
+
 	H = $00;
 	L = $04;
-	push HL;
+	push HL;	# Sprite flags and length
 	DE = Robot_Steh;
 	call Place_Meta_Sprite_In_OAM;
 
 
 	
-	push BC;
 	call Clean_OAM_Buffer;
 	call DMA_Transfer;
 	pop BC;
-
+	pop DE;
 	pop HL;
 
 	returni;
