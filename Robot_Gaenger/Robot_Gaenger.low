@@ -7,6 +7,8 @@ file Robot_Gaenger/Memory_Copy.low;
 
 macro DMA_OAM_BUFFER $C000;
 
+file Robot_Gaenger/Global_Variables.low;
+
 file Robot_Gaenger/DMA_Handler.low;
 
 file Robot_Gaenger/Meta_Sprite_Handling.low;
@@ -35,13 +37,13 @@ macro Parallax_Brick_Background_Tile_Data_Size $0008;
 data Parallax_Brick_Background_Tile_Data $04D0
 file Robot_Gaenger/Parallax_Brick_Background.td;	# $04F0 - $04F7
 
-macro Robot_Graphics_Size $0200;
-data Robot_Graphics_Data $04F8
+macro Robot_Graphics_Size $02A0;
+data Robot_Graphics_Data $1700
 file Robot_Gaenger/Robot_Graphics.td;		# $04F8 - $06F7
 
 macro Title_Bot_Letters_Size $0046;
 data Title_Bot_Letters_Data $1400
-file Robot_Gaenger/Title_BOT_Letters.tm;
+file Robot_Gaenger/Title_BOT_Letters.td;
 
 file Robot_Gaenger/Level_Handler.low;
 
@@ -71,6 +73,9 @@ subroutine Title_Screen_Loop_Routine $1300
 	HL = LCD_Interrupt_Routine_Flags;
 	[HL] = $01;							# Use the non-wavy HBlank routine
 
+	HL = Global_Animation_Counter;
+	[HL] = $01;						# Reset the global animation counter
+
 	A ^= A;
 	[OAM_Buffer_Counter_Start] = A;
 
@@ -89,7 +94,7 @@ subroutine Title_Screen_Loop_Routine $1300
 	C = WINDOW_SCROLL_Y_REGISTER;
 	A = [$FF00 + C];
 	A < $91;						# If carry, Window_Scroll_Y_Register is off screen
-	jump not_carry Game_Loop;		# If that's the case, stop scrolling it
+	jump not_carry Init_First_Level;		# If that's the case, stop scrolling it
 
 	# Otherwise, decrement the global animation counter
 	HL = Global_Animation_Counter;

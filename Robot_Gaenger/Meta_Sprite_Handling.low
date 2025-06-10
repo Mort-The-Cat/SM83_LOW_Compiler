@@ -38,13 +38,13 @@ subroutine Place_Meta_Sprite_In_OAM $09D0
 	# Before this function is called, push object Y and X to the stack.
 	# Then, push sprite flags
 
+	# SP + ... are important values we want to return to after the function
 	# SP + $00 and SP + $01 are the return function pointer
 
 	# SP + $02 is just padding
 	# SP + $03 is sprite flags
 	# SP + $04 is the X value
 	# SP + $05 is the Y value
-	# SP + ... are important values we want to return to after the function
 
 	# DE is the sprite information pointer
 		# This only includes the 4 tiles

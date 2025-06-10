@@ -11,13 +11,13 @@ data Fade_To_White_Palettes $1600
 	$40 $40
 		# 01 00 00 00
 	$00 $00
-		$ 00 00 00 00
+		# 00 00 00 00
 }
 
 subroutine Fade_To_White $1380
 {
 	# SP + $00 and SP + $01 are the return pointers
-	# SP + $FF can be used for useful stack data
+	# SP + $FF can be used for useful local stack data
 
 	DE = Fade_To_White_Palettes;
 	C = Global_Animation_Counter;
@@ -43,22 +43,23 @@ subroutine Fade_To_White $1380
 
 	# If the animation counter has run out,
 	A = $02;
-	[$FF00 + Global_Animation_Counter] = A;
+	[$FF00 + Global_Animation_Counter] = A;		# Resets animation counter to 2
 	E++;
 	A = [DE];
 	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
 	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
 	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
-	L--;
-	jump not_zero Wait_End_VBlank;
+	L--;										# Do we have any more palettes to cycle through?
+	jump not_zero Wait_End_VBlank;				# If we do, loop back
 
-
-	return;
+	return;										# Otherwise, return!
 }
 
-subroutine Game_Loop $1580
+subroutine Init_First_Level $1580
 {
 	call Fade_To_White;
+
+
 
 	label Test;
 	jump Test;

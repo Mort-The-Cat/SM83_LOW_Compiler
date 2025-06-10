@@ -1,0 +1,16 @@
+{
+    "name": "Dark Visual Studio",
+    "settings": [
+        {
+            "scope": "comment",
+            "settings":{
+                "foreground":"#608b4e"
+            }
+        }
+    ],
+    "comment":{
+        "patterns":{
+            "match": "#"
+        }
+    }
+}
