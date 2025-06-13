@@ -23,31 +23,37 @@ macro Alphabet_Tile_Data_Size $02E0;
 data Alphabet_Tile_Data $0150
 file Robot_Gaenger/Alphabet_Tiles.td;		# $0150 - $042F
 
-macro Title_Tile_Data_Size $0080;
+macro Title_Tile_Data_Size $00E0;
 data Title_Tile_Data $0430
-file Robot_Gaenger/Title.td;				# $0430 - $04AF
+file Robot_Gaenger/Title.td;				# $0430 - $050F
 
 macro Brick_Background_Tile_Data_Size $0020;
-data Brick_Background_Tile_Data $04B0
-file Robot_Gaenger/Brick_16_16.td;			# $04B0 - $04EF
+data Brick_Background_Tile_Data $0510
+file Robot_Gaenger/Brick_16_16.td;			# $0510 - $052F
 
 # Note that this uses grey and black pixels! (02/03) the title screen should use white and light-grey (00/01)
 
-macro Parallax_Brick_Background_Tile_Data_Size $0008;
-data Parallax_Brick_Background_Tile_Data $04D0
+macro Parallax_Brick_Background_Tile_Data_Size $0010;
+data Parallax_Brick_Background_Tile_Data $0530
 file Robot_Gaenger/Parallax_Brick_Background.td;	# $04F0 - $04F7
 
-macro Robot_Graphics_Size $02A0;
+macro Robot_Graphics_Size $02D0;
 data Robot_Graphics_Data $1700
 file Robot_Gaenger/Robot_Graphics.td;		# $04F8 - $06F7
+
+macro Cloud_Graphics_Size $0090;
+data Cloud_Graphics_Data $1A00
+file Robot_Gaenger/Cloud_Graphics.td;
+
+macro Shaded_Brick_Graphics_Size $01A0;
+data Shaded_Brick_Graphics_Data $1A90
+file Robot_Gaenger/Shaded_Brick.td;
 
 macro Title_Bot_Letters_Size $0046;
 data Title_Bot_Letters_Data $1400
 file Robot_Gaenger/Title_BOT_Letters.td;
 
 file Robot_Gaenger/Level_Handler.low;
-
-# Routine data can begin from 06F8 :D
 
 subroutine Title_Screen_Loop_Routine $1300
 {
@@ -153,7 +159,7 @@ subroutine Init_Title_Screen $0730
 		# call Memcpy;
 
 	HL = Brick_Background_Tile_Data;
-	DE = $0028;
+	DE = $0030;
 
 	label Load_Parallax_Brick_Background_Loop;
 		A = [HL++];
@@ -171,6 +177,14 @@ subroutine Init_Title_Screen $0730
 	HL = $81C0;
 	DE = $0040;
 	call Memcpy;	# This copies the Robot_Graphics bricks into the 2nd VRAM Block
+
+	HL = Cloud_Graphics_Data;
+	DE = Cloud_Graphics_Size;
+	call Memcpy;
+
+	HL = Shaded_Brick_Graphics_Data;
+	DE = Shaded_Brick_Graphics_Size;
+	call Memcpy;
 
 	HL = VRAM_TILEM_1;
 	DE = $0020;

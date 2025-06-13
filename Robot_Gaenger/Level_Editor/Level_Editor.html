@@ -1,0 +1,320 @@
+<canvas id="VRAM" width = "143" height = "143">
+</canvas>
+
+<style>
+#VRAM
+{
+    border:2px solid black;
+}
+</style>
+
+<canvas id="Level" width = "575" height = "287"> <!-- width is 256 and so is height -->
+</canvas>
+
+<!-- height = 32 tiles, width = 64 tiles -->
+
+<style>
+#Level
+{
+    border : 2px solid black;      
+	-ms-interpolation-mode: nearest-neighbor;
+}
+</style>
+
+<br>
+<img id="img" onclick = "Selected_Draw_Tool = 0;" src="P_Brush.png" width = "20" height = "20">
+</img>
+
+<img id="img" onclick = "Selected_Draw_Tool = 1;" src="Square.jpg" width = "20" height = "20">
+</img>
+
+<img id="img" onclick = "Selected_Draw_Tool = 2;" src="P_Bucket.jpg" width = "20" height = "20">
+</img>
+
+<img id="img" onclick = "Output_Level_Data();" src="Export.jpg" width="20" height = "20"></img>
+
+<img id="img" onclick = "Get_Level_Data_From_File();" src="Download.jpg" width="20" height="20"></img>
+
+<style>
+    #img
+    {
+        border : 2px solid black;
+    }
+</style>
+
+<br>
+<label for="tilemap">Tilemap Data:</label><br>
+<textarea 
+    id="tilemap" 
+    name="tilemap" 
+    cols="128"
+    placeholder="Level Data Output:">
+</textarea><br><br>
+
+<form>
+<label for="VRAM_File">Please input VRAM data file:</label>
+<input type="file" id="VRAM_File" name="VRAM_File">
+</form>
+<br><br>
+
+<body onload="Init_Page()"></body>
+
+<script>
+
+var Level_Length = 64;
+var Level_Data = new Uint8Array(32 * Level_Length);
+
+var Selected_Draw_Tool;
+
+const VRAM_Scale = 2;
+var Level_Scale = (VRAM_Scale * 143)/287;
+
+const VRAM_File_Input_Element = document.getElementById("VRAM_File");
+VRAM_File_Input_Element.addEventListener("change", New_File, false);
+
+const VRAM_Canvas = document.getElementById("VRAM");
+
+const Level_Canvas = document.getElementById("Level");
+
+VRAM_Canvas.addEventListener('click', VRAM_Click);
+
+Level_Canvas.addEventListener('mousedown', Mouse_Down);
+Level_Canvas.addEventListener('mouseup', Mouse_Up);
+
+Previous_Click_Position = { X : 0, Y : 0 };
+
+var Selected_Tile_Index = 0;
+
+function Get_Hex(Value)
+{
+    let Hexadecimals = "0123456789ABCDEF";
+    return ("$" + Hexadecimals[Value >> 4]) + Hexadecimals[Value & 15];
+}
+
+function Get_Level_Data_From_File()
+{
+    // This'll just read the level data tbh
+
+    if(!confirm("Are you sure you want to import this tilemap?"))
+        return;
+
+    let String = document.getElementById('tilemap').value;
+
+    String = String.replace(/[^0-9A-F]/g, '');
+    Level_Data = new Uint8Array(String.match(/.{1,2}/g).map(Byte => parseInt(Byte, 16)));
+    Render_Level();
+}
+
+function Output_Level_Data()
+{
+    let Output = "";
+    let Index = 0;
+    for(let X = 0; X < Level_Length; X++)
+    {
+        for(let Y = 0; Y < 32; Y++)
+        {
+            Output += Get_Hex(Level_Data[Index++]) + " ";
+        }
+
+        Output += "\n";
+    }
+
+    document.getElementById("tilemap").value = Output;
+}
+
+function Mouse_Up(Event)
+{
+    let Level_Context = Level_Canvas.getContext("2d");
+
+    if(Selected_Draw_Tool == 1)
+    {
+        let New_Position = Get_Mouse_Position(Level_Canvas, Event);
+        New_Position.X = parseInt(New_Position.X / (9 * Level_Scale));
+        New_Position.Y = parseInt(New_Position.Y / (9 * Level_Scale));
+
+        for(let X = Previous_Click_Position.X; X <= New_Position.X; X++)
+        {
+            for(let Y = Previous_Click_Position.Y; Y <= New_Position.Y; Y++)
+            {
+                Level_Data[X * 32 + Y] = Selected_Tile_Index / 16;
+                Draw_Tile(Level_Context, X * 9, Y * 9, Selected_Tile_Index, Level_Scale);
+            }
+        }
+    }
+}
+
+function Mouse_Down(Event)
+{
+    if(Selected_Draw_Tool == 0)
+    {
+        Place_Tile_In_Level(Event);
+    }
+    else
+    {
+        let Position = Get_Mouse_Position(Level_Canvas, Event);
+
+        Position.X = parseInt(Position.X / (9 * Level_Scale));
+        Position.Y = parseInt(Position.Y / (9 * Level_Scale));
+        Previous_Click_Position = Position;
+    }
+}
+
+function Place_Tile_In_Level(Event)
+{
+    const Level_Context = Level_Canvas.getContext("2d");
+
+    let Position = Get_Mouse_Position(Level_Canvas, Event);
+
+    Position.X = parseInt(Position.X / (9 * Level_Scale));
+    Position.Y = parseInt(Position.Y / (9 * Level_Scale));
+
+    Level_Data[Position.X * 32 + Position.Y] = Selected_Tile_Index / 16;
+
+    // Render_Level();
+
+    Draw_Tile(Level_Context, Position.X * 9, Position.Y * 9, Selected_Tile_Index, Level_Scale);
+}
+
+const Selected_Tile = { X : 0, Y : 0 };
+
+function Draw_Tile(Context, Screen_X, Screen_Y, Tile, Scale)
+{
+    const Palette = ["white", "SandyBrown", "DarkRed", "black"];
+
+    for(let Scanline = 0; Scanline < 8; Scanline++)
+    {
+        let Byte_1 = Data[Tile++];
+        let Byte_2 = Data[Tile++];
+
+        for(let Pixel = 0; Pixel < 8; Pixel++)
+        {
+            let Colour = (Byte_1 & (128 >> Pixel)) != 0;
+            Colour += ((Byte_2 & (128 >> Pixel)) != 0) << 1;
+
+            Context.fillStyle = Palette[Colour];
+            //for(let Iteration = 0; Iteration < 2; Iteration++) // This is because canvas drawing in JS is bugged
+            //{
+            Context.fillRect(
+                (Screen_X + Pixel) * Scale,
+                (Screen_Y + Scanline) * Scale,
+                Scale,
+                Scale);
+            //}
+        }
+        
+        // Each scanline is composed of 2 contiguous bytes
+    }
+}
+
+function Render_Level()
+{
+    const Level_Context = Level_Canvas.getContext("2d");
+    Level_Context.fillStyle = "LightCoral";
+    Level_Context.fillRect(0, 0, Level_Canvas.width, Level_Canvas.height);
+    let Index = 0;
+    for(let X = 0; X < 64; X++)
+    {
+        for(let Y = 0; Y < 32; Y++)
+        {
+            let Tile = Level_Data[Index];
+            Tile += 0x100 * (Tile < 0x80);
+            Draw_Tile(Level_Context, X * 9, Y * 9, 16 * Tile, Level_Scale);
+            Index++;
+        }
+    }
+}
+
+function VRAM_Click(Event)
+{
+    let Position = Get_Mouse_Position(VRAM_Canvas, Event);
+    Selected_Tile.X = parseInt(Position.X / (VRAM_Scale * 9));
+    Selected_Tile.Y = parseInt(Position.Y / (VRAM_Scale * 9));
+
+    Selected_Tile.Y += 8;
+
+    if(Selected_Tile.Y > 15)
+    {
+        Selected_Tile.Y -= 16;
+    }
+
+    Selected_Tile_Index = Selected_Tile.X + Selected_Tile.Y * 16;
+    Selected_Tile_Index += 0x100 * (Selected_Tile_Index < 0x80);
+    Selected_Tile_Index *= 16;
+
+    console.log(Selected_Tile.X, Selected_Tile.Y);
+}
+
+function Get_Mouse_Position(Canvas, Event)
+{
+    let Rectangle = Canvas.getBoundingClientRect();
+    return {
+        X : Event.clientX - Rectangle.left,
+        Y : Event.clientY - Rectangle.top
+    };
+}
+
+var Data = null;
+
+function Update_VRAM_Canvas(Array_Buffer)
+{
+    // Array_Buffer is an array buffer (no fucking way)
+
+    // console.log(Array_Buffer);
+
+    Data = new Uint8Array(Array_Buffer);
+
+    // width = 128
+    // height = 192
+    // 00 = black?
+    // 01 = dark grey
+    // 10 = grey
+    // 11 = white
+
+    // 16 tiles wide
+    // 24 tiles tall
+
+    let Index = 128 * 16;
+    const Context = VRAM_Canvas.getContext("2d");
+    Context.fillStyle = "coral";
+    Context.fillRect(0, 0, 144 * VRAM_Scale, 216 * VRAM_Scale);
+    for(let Y = 0; Y < 216; Y+=9)
+    {
+        for(let X = 0; X < 144; X+=9)
+        {
+            Draw_Tile(Context, X, Y, Index, VRAM_Scale);
+
+            Index += 16;
+        }
+    }
+
+    Render_Level();
+}
+
+function New_File(Event)
+{
+    const File = Event.target.files[0]; // We just want one file, select the first one
+    // Won't be adding error handling for now
+    // This is just a dev tool so I don't really care
+    let File_Reader = new FileReader();
+    File_Reader.onload = () => {
+        Update_VRAM_Canvas(File_Reader.result);
+    };
+    File_Reader.readAsArrayBuffer(File);
+}
+
+function Init_Page()
+{
+    let VRAM_Element = VRAM_Canvas;
+    VRAM_Element.width *= VRAM_Scale;
+    VRAM_Element.height *= VRAM_Scale;
+
+    //Level_Canvas.style.width = Level_Canvas.width;
+    //Level_Canvas.style.height = Level_Canvas.height;
+    
+    Level_Scale = 1;
+
+    Level_Canvas.width *= Level_Scale;
+    Level_Canvas.height *= Level_Scale;
+}
+
+</script>
