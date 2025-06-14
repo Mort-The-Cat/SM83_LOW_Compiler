@@ -48,18 +48,135 @@ subroutine Fade_To_White $1380
 	A = [DE];
 	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
 	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
-	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
+	# [$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
 	L--;										# Do we have any more palettes to cycle through?
 	jump not_zero Wait_End_VBlank;				# If we do, loop back
 
 	return;										# Otherwise, return!
 }
 
+subroutine Load_New_Column_Of_Level_Data $2500
+{
+	# This loads in the next column of level data into VRAM according to the scroll registers
+
+	# SP + $00
+	# SP + $01 are the return pointers and can't be overwritten
+	
+	# SP + $02 column pixels/subpixels (not used) (Always zeroed) (Just padding)
+	# SP + $03 column tile position
+	
+	# Note that the high register is pushed BEFORE the low register.
+
+	# This will also find where in VRAM it needs to be loaded based on the camera X and the column X
+
+	# The distance in VRAM between top and bottom is $400 bytes long
+	# With a $20 byte jump between them.
+
+	HL = SP + $03; # Next column tile position
+
+	A = [HL];
+	HL = Camera_Scroll_X;	# The byte at this location corresponds to the tile position
+	A -= [HL];				# Position relative to tilemap (in tiles obviouly)
+
+	L = A;
+	H = $00;
+
+	HL += HL;	# x2
+	HL += HL;	# x4
+	HL += HL;	# x8
+	HL += HL;	# x16
+	HL += HL;	# x32
+
+	BC = Intro_Level_Data;
+	HL += BC;
+
+	B = H;
+	C = L;
+
+	L = A;
+	H = $98;	# Tile map 0
+
+	E = $20;
+
+	label Copy_Row_Loop;
+	A = [BC];
+	BC++;
+	[HL] = A;
+	push DE;
+	DE = $0020;
+	HL += DE;
+	pop DE;
+	E--;
+	jump not_zero Copy_Row_Loop;
+
+	pop HL;	# Gets the return pointers
+	SP += $02;	# Returns stack to where it was
+	
+	jump HL;	# Returns
+}
+
+subroutine Load_Start_Of_Level $2580
+{
+	A ^= A;
+	[$FF00 + Camera_Scroll_X] = A;	# Resets camera scroll X
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+
+	A = 112;
+
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	BC = $0020;
+
+	label Copy_Column_Loop;
+	push BC;	# Saves for later
+	push BC;	# Pushes (tile) and (padding)
+	call Load_New_Column_Of_Level_Data;
+	pop BC;		# Gets BC back
+	B++;		# Next tile
+	C--;		# Decrement counter
+	jump not_zero Copy_Column_Loop;
+
+	return;
+}
+
 subroutine Init_First_Level $1580
 {
 	call Fade_To_White;
 
+	# We want to wait until VBlank
+	# Turn off the LCD
+	# And load the new section of the level
 
+	label Wait_For_VBlank_Loop;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_For_VBlank_Loop;
+
+	A ^= A;
+	[$FF00 + LCDC_REGISTER] = A;	# Turns off the LCD to allow for a full-screen load
+
+	C = Player_Y;
+	A = $18;			# Y(tiles) = 24;
+	[$FF00 + C] = A;
+	A ^= A;				# Y(sub/pixels) = 0
+	C++;
+	[$FF00 + C] = A;
+	A = $0A;			# X(tiles) = 10
+	C++;
+	[$FF00 + C] = A;
+	A ^= A;				# X(sub/pixels) = 0
+	C++;
+	[$FF00 + C] = A;
+
+	call Load_Start_Of_Level;
+
+	A = $E4;	# This is the background palette we want
+	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+
+	# HL = OAM_Buffer_Counter_Start;
+
+	
 
 	label Test;
 	jump Test;

@@ -29,7 +29,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.low",
-                    "match": "\\b(return|returni|enablei|disablei|label|jump|call)\\b"
+                    "match": "\\b(return|returni|enablei|disablei|label|jump|call|push|pop)\\b"
                 },
                 {
                     "name": "keyword.other.low",
@@ -37,7 +37,7 @@
                 },
                 {
                     "name": "keyword.operator.low",
-                    "match": "(BCD|\\+=|\\-=|\\|=|&=|>>=|>>>=|>><=|<<>=|\\|>><=|<<>\\|=|=|swap|push|pop|\\+|\\+\\+|\\-\\-|~=|<)"
+                    "match": "(BCD|\\+=|\\-=|\\|=|&=|>>=|>>>=|>><=|<<>=|\\|>><=|<<>\\|=|=|swap|\\+|\\+\\+|\\-\\-|~=|<)"
                 }
             ]
         },
