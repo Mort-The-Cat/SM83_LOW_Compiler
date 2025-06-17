@@ -47,6 +47,26 @@ subroutine Triangle_Wave $0018
 	return;		# 001D
 }
 
+subroutine Add_Delta_To_Word $0020
+{
+	word Position : HL;
+	byte High : D;					# User needs to set this to $00 before calling function
+	byte Lower : E;
+	# High = $00;            			# 0020 - 0021
+		# 2 cycles
+	Lower <<= 1;        			# 0020 - 0021
+		# 2 cycles
+		# Sets carry flag to S
+	jump not_carry Not_Negative;    # 0022 - 0023
+		# If there's no carry, we can skip this part, 2-3 cycles
+	High--;							# 0024
+		# Sets D to $FF, 1 cycle
+	label Not_Negative;
+	HL += DE;						# 0025 
+		# 2 cycles
+	return;							# 0026
+}
+
 subroutine Min_Max $0030
 {
 	# C is max

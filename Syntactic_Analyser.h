@@ -302,6 +302,7 @@ void Generate_Byte_Code(const Vector* Tokens)
 
 		case T_CLOSE_SCOPE:
 			Vector_Clear(&Identifiers);
+			Vector_Clear(&Unresolved_Jump_Relative_Identifiers);
 			Token_Index += sizeof(Token);
 			break;
 
@@ -313,16 +314,22 @@ void Generate_Byte_Code(const Vector* Tokens)
 
 			if (Unresolved_Jump_Relative_Identifiers.Size)
 			{
-				if (0 == strcmp(((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->Representation, Byte.Identifier))
+				Jump_Conditions = 0;
+				while (Jump_Conditions < (Unresolved_Jump_Relative_Identifiers.Size / sizeof(Unresolved_Jump_Relative_Identifier)))
 				{
-					// CURRENT ROM INDEX IS WHAT WE WANT!!
+					if (0 == strcmp(((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)[Jump_Conditions].Representation, Byte.Identifier))
+					{
+						// CURRENT ROM INDEX IS WHAT WE WANT!!
 
-					Buffer = ROM_Index;
-					Buffer -= (((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->ROM_Index + 1);
+						Buffer = ROM_Index;
+						Buffer -= (((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)[Jump_Conditions].ROM_Index + 1);
 
-					ROM[((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)->ROM_Index] = Buffer; // Good!!
+						ROM[((Unresolved_Jump_Relative_Identifier*)Unresolved_Jump_Relative_Identifiers.Data)[Jump_Conditions].ROM_Index] = Buffer; // Good!!
 
-					Vector_Clear(&Unresolved_Jump_Relative_Identifiers);
+						// Vector_Clear(&Unresolved_Jump_Relative_Identifiers);
+					}
+
+					Jump_Conditions++;
 				}
 			}
 

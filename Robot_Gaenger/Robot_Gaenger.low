@@ -53,6 +53,8 @@ macro Intro_Level_Data_Size $0800;
 data Intro_Level_Data $1D00
 file Robot_Gaenger/Test_Level_Data.td;
 
+file Robot_Gaenger/Player_State_Handler.low;
+
 file Robot_Gaenger/Level_Handler.low;
 
 subroutine Title_Screen_Loop_Routine $1300
@@ -77,7 +79,7 @@ subroutine Title_Screen_Loop_Routine $1300
 	jump not_zero Wait_For_VBlank_Loop;
 
 	HL = LCD_Interrupt_Routine_Flags;
-	[HL] = $01;							# Use the non-wavy HBlank routine
+	[HL] = $02;							# Use the non-wavy HBlank routine
 
 	HL = Global_Animation_Counter;
 	[HL] = $01;						# Reset the global animation counter
@@ -118,7 +120,10 @@ subroutine Init_Title_Screen $0730
 	SP = $CFFF;	# This places the stack where we want it to go
 
 	HL = LCD_Interrupt_Routine_Flags;
-	[HL] = $00;							# Use the wavy HBlank routine
+	[HL] = $01;							# Use the wavy HBlank routine
+
+	HL = VBlank_Interrupt_Routine_Flags;
+	[HL] = $01;
 
 	call Init_HRAM_DMA_Function;
 

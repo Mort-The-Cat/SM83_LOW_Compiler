@@ -32,15 +32,16 @@ macro Global_Animation_Counter $FFFE;		# This is used for things like the title 
 # Gives the result A = TTTTTPPP to the nearest pixel (which is important for graphics)
 # This number of subpixels is kinda overkill but I think it's the best method I have
 
-macro Camera_Scroll_X $FFFC;    # FFFC = H, FFFD = L
-macro Camera_Scroll_Y $FFFA;    # FFFA = H, FFFB = L
-macro Player_X  $FFF8;          # FFF8 = H, FFF9 = L
-macro Player_Y  $FFF6;          # FFF6 = H, FFF7 = L
-macro Player_State  $FFF5;      # FFF5 is 8 bits for player state
-macro Player_X_Vel  $FFF4;      # SPPPssss
-macro Player_Y_Vel  $FFF3;      # SPPPssss
+macro Camera_Scroll_X $FFFC; macro Camera_Scroll_X_Low $FFFD;    # FFFC = H, FFFD = L
+macro Camera_Scroll_Y $FFFA;                    # FFFA = H, FFFB = L
+macro Player_X $FFF8; macro Player_X_Low $FFF9; # FFF8 = H, FFF9 = L
+macro Player_Y $FFF6; macro Player_Y_Low $FFF7; # FFF6 = H, FFF7 = L
+macro Player_State $FFF5;      # FFF5 is 8 bits for player state
+macro Player_X_Vel $FFF4;      # SPPPssss
+macro Player_Y_Vel $FFF3;      # SPPPssss
 macro Player_Animation_Counter $FFF2;
 #               The player can't move faster than 7 pixels per frame with this current setup
+macro Player_Direction $FFF1;
 
 # Here's how you add an 8-bit velocity to a 16-bit position:
 #   word Position : HL;
@@ -53,3 +54,6 @@ macro Player_Animation_Counter $FFF2;
 #   High--;                            # Sets D to $FF, 1 cycle
 #   label Not_Negative;
 #   HL += DE;                       # 2 cycles
+
+macro Level_Width $FFF0;        # This is the width of the current level 
+                                # (this allows the screen to lock at the sides of the level)

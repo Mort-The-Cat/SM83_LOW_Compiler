@@ -1,0 +1,162 @@
+subroutine Handle_Player_Inputs $2800
+{
+    A = CONTROLLER_DPAD_FLAG;
+    [$FF00 + CONTROLLER_REGISTER] = A;
+    [$FF00 + CONTROLLER_REGISTER] = A;
+    [$FF00 + CONTROLLER_REGISTER] = A;
+    [$FF00 + CONTROLLER_REGISTER] = A;  # Requires time to stabilise
+
+    A = [$FF00 + CONTROLLER_REGISTER];
+
+    B = A;
+
+    B.CONTROLLER_BUTTON_RIGHT_BIT;  # These values are zero when the button is pushed
+    A = [$FF00 + Player_Direction];
+    A &= $7F;
+    jump not_zero Right_Not_Pushed;
+        A = $80;
+        jump Left_Not_Pushed;       # We know that left hasn't been pushed
+    label Right_Not_Pushed;
+
+    B.CONTROLLER_BUTTON_LEFT_BIT;
+    jump not_zero Left_Not_Pushed;
+        A = $81;
+    label Left_Not_Pushed;
+    
+    [$FF00 + Player_Direction] = A;
+
+    # We won't worry about the rest for now
+
+    return;
+}
+
+data Player_State_Table $2900
+{
+    # right 0
+    # right 1
+    # right 2
+    # right 3
+
+    # left 3
+    # left 2
+    # left 1
+    # left 0
+
+    # run right intro
+    # run right 0
+    # run right 1
+
+    # run left intro
+    # run left 0
+    # run left 1
+}
+
+subroutine Stand_Or_Turnaround_Handler $2980
+{
+    
+}
+
+subroutine Handle_Player_Animations $2880
+{
+
+}
+
+subroutine Handle_Player_Physics $2780
+{
+    call Handle_Player_Inputs;
+
+    A = $08;
+    [$FF00 + Player_X_Vel] = A; # This just sets the player X vel to the test value we want!
+
+    A ^= A;
+    D = A;
+    A = [$FF00 + Player_X_Vel];
+    E = A;
+    # Sets DE to player vel vector
+
+    C = Player_X;
+    A = [$FF00 + C];
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    L = A;
+
+    call Add_Delta_To_Word;
+
+    A = L;
+    [$FF00 + C] = A;
+    A = H;
+    C--;
+    [$FF00 + C] = A;
+
+    # This adds player X vel to player X
+
+    # Next, we want to place player sprite on screen
+
+    C = Camera_Scroll_Y;
+    A = [$FF00 + C];
+    A ~= A;             # Gets compliment of A
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    C = Player_Y;
+    A = [$FF00 + C];
+    D = A;
+    C++;
+    A = [$FF00 + C];
+    E = A;
+
+    HL += DE;       # Player_X - Camera_Scroll_X
+
+    HL += HL;
+    HL += HL;
+    HL += HL;       # TTTTTPPP (screen format)
+
+    A = $10;
+    A += H;
+
+    B = A;          # Stores this in B for later
+
+    # Now, we want to do X vals
+
+    C = Camera_Scroll_X;
+
+    A = [$FF00 + C];
+    A ~= A;             # Gets compliment of A
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    C = Player_X;
+    A = [$FF00 + C];
+    D = A;
+    C++;
+    A = [$FF00 + C];
+    E = A;
+
+    HL += DE;       # Player_X - Camera_Scroll_X
+
+    HL += HL;
+    HL += HL;
+    HL += HL;       # TTTTTPPP (screen format)
+
+    C = H;
+
+    push BC;        # This pushes Y and X values of sprite to screen
+
+    jump Handle_Player_Animations;
+
+    # B = $00;
+    # push BC;
+    # DE = Robot_Steh;
+    # call Place_Meta_Sprite_In_OAM;
+
+    return;
+}

@@ -57,8 +57,6 @@ subroutine Fade_To_White $1380
 
 subroutine Load_New_Column_Of_Level_Data $2500
 {
-	# This loads in the next column of level data into VRAM according to the scroll registers
-
 	# SP + $00
 	# SP + $01 are the return pointers and can't be overwritten
 	
@@ -72,47 +70,49 @@ subroutine Load_New_Column_Of_Level_Data $2500
 	# The distance in VRAM between top and bottom is $400 bytes long
 	# With a $20 byte jump between them.
 
-	HL = SP + $03; # Next column tile position
-
-	A = [HL];
-	HL = Camera_Scroll_X;	# The byte at this location corresponds to the tile position
-	A -= [HL];				# Position relative to tilemap (in tiles obviouly)
-
+	HL = SP + $03;
+	A = [HL];	# Tile of column to load
 	L = A;
 	H = $00;
-
-	HL += HL;	# x2
-	HL += HL;	# x4
-	HL += HL;	# x8
-	HL += HL;	# x16
-	HL += HL;	# x32
+	HL += HL; # x2
+	HL += HL; # x4
+	HL += HL; # x8
+	HL += HL; # x16
+	HL += HL; # x32
 
 	BC = Intro_Level_Data;
-	HL += BC;
 
+	HL += BC;
+	
 	B = H;
 	C = L;
 
+	A &= $1F;
 	L = A;
-	H = $98;	# Tile map 0
+	H = $98;	# Start of tilemap circular buffer
 
-	E = $20;
+	D = $20;	# Distance between tiles in memory
+	E = D;		# Number of tiles to copy
 
-	label Copy_Row_Loop;
+	label Copy_Column_Loop;
 	A = [BC];
 	BC++;
 	[HL] = A;
-	push DE;
-	DE = $0020;
-	HL += DE;
-	pop DE;
-	E--;
-	jump not_zero Copy_Row_Loop;
 
-	pop HL;	# Gets the return pointers
-	SP += $02;	# Returns stack to where it was
-	
-	jump HL;	# Returns
+	A = L;
+	A += D;
+	jump not_carry No_Carry;
+	H++;
+	label No_Carry;
+	L = A;
+
+	E--;
+	jump not_zero Copy_Column_Loop;
+
+	pop HL;
+	SP += $02;
+
+	jump HL;
 }
 
 subroutine Load_Start_Of_Level $2580
@@ -137,6 +137,171 @@ subroutine Load_Start_Of_Level $2580
 	jump not_zero Copy_Column_Loop;
 
 	return;
+}
+
+subroutine Scroll_Routine $26C0
+{
+	# Now, we want to update the ends of the circular buffer
+	C = $17;
+	A = [$FF00 + Player_X_Vel];
+	A.7;						# Checks sign bit of the player X velocity
+	jump zero Scroll_Right;		# If the number is positive (right)
+	C = $FE;
+	label Scroll_Right;			# Keep using the $18 value for scroll routine
+
+	A = [$FF00 + Camera_Scroll_X];
+	A += C;			# Loads tiles at position 24 OR -4
+	B = A;
+	push BC;
+	call Load_New_Column_Of_Level_Data;
+
+	# We've done what we need! Return from function
+
+	return;
+}
+
+subroutine Update_Player_Scroll $2600 
+{
+	# Compare left/right side of level
+	# If $0A00 is greater than Player X,
+	# Use the value $0A00
+
+	# If HIGH(player X) is greater than the value (Level_Width) + $F600,
+	# use value (Level_Width) + $F600
+
+	A = [$FF00 + Player_X];
+	A < $0A;
+	C = Camera_Scroll_X;
+	jump not_carry Clamp_Left_Not_Necessary;
+	A = $00;
+	[$FF00 + C] = A;	# Sets camera scroll to min value
+	A ^= A;
+	C++;
+	[$FF00 + C] = A;	# Clears sub/pixels
+	jump Finished_Clamping;	
+		# Since we clamped left,
+		# We know we don't need to clamp right
+	label Clamp_Left_Not_Necessary;
+	L = A;
+	A = [$FF00 + Level_Width];
+	A < L;						# Level_Width < Player_X
+	jump not_carry Clamp_Right_Not_Necessary;
+	A -= $09;
+	[$FF00 + C] = A;
+	A ^= A;
+	C++;
+	[$FF00 + C] = A;
+	jump Finished_Clamping;
+	label Clamp_Right_Not_Necessary;
+
+	C = Camera_Scroll_X;
+	A = L;
+	A -= $0A;				# Subtract 10 tiles (half the screen)
+	[$FF00 + C] = A;
+	C++;
+	A = [$FF00 + Player_X_Low];
+	[$FF00 + C] = A;
+	# This sets the camera scroll registers accordingly
+
+	label Finished_Clamping;
+
+	C = Camera_Scroll_X;
+
+	A = [$FF00 + C];	
+	H = A;				# Puts tile in H
+	C++;
+	A = [$FF00 + C];
+	L = A;				# Puts sub/pixels in L
+
+	C = H;				# Simply saves for later
+
+	HL += HL;			# x2
+	HL += HL;			# x4
+	HL += HL;			# x8
+
+	# H now has TTTTTPPP (correct format)
+
+	A = H;
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;	# Sets horizontal scroll register!
+
+	# Afterwards, we want to adjust the Y scroll register
+
+	#
+
+	A = [$FF00 + Player_Y];
+	A < $09;
+	C = Camera_Scroll_Y;
+	jump not_carry Clamp_Top_Not_Necessary;
+	A = $00;
+	[$FF00 + C] = A;
+	C++;
+	A ^= A;
+	[$FF00 + C] = A;
+	jump Finished_Vertical_Clamping;
+
+	label Clamp_Top_Not_Necessary;
+	A < $15;
+	jump carry Clamp_Bottom_Not_Necessary;
+	A = $0E;
+	[$FF00 + C] = A;
+	C++;
+	A ^= A;
+	[$FF00 + C] = A;
+	jump Finished_Vertical_Clamping;
+
+	label Clamp_Bottom_Not_Necessary;
+	A -= $09;
+	[$FF00 + C] = A;
+	C++;
+	A = [$FF00 + Player_Y_Low];
+	[$FF00 + C] = A;
+
+	label Finished_Vertical_Clamping;
+
+	A = [$FF00 + C];
+	L = A;
+	C--;
+	A = [$FF00 + C];
+	H = A;
+
+	HL += HL;
+	HL += HL;
+	HL += HL;
+
+	A = H;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;		# Sets background scroll Y register!
+
+	return;
+}
+
+subroutine Game_Loop $2700
+{
+	label Loop;
+
+	# Do stuff that doesn't require VBlank
+
+	call Handle_Player_Physics;
+
+	call Update_Player_Scroll;	# This *does* touch the scroll register but that shouldn't be a problem
+	
+	call Clean_OAM_Buffer;	# This is updating the OAM *buffer* ($C000 - $C09F)
+							# So it doesn't require VRAM accesses
+
+	# Wait for VBlank
+
+	label Wait_For_VBlank_Loop;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_For_VBlank_Loop;
+
+	# Do graphics stuff
+
+	call Scroll_Routine;	# The scroll routine only really has time to update 1 whole column
+							# We should ideally base this on which direction the player has just moved
+
+	# Continue
+
+	jump Loop;
 }
 
 subroutine Init_First_Level $1580
@@ -168,16 +333,26 @@ subroutine Init_First_Level $1580
 	C++;
 	[$FF00 + C] = A;
 
+	A = $3F;	# 64 tiles
+	A += $F6;	# - 10 tiles (to account for screen width/2)
+	[$FF00 + Level_Width] = A;	# Sets offset level width
+
 	call Load_Start_Of_Level;
 
 	A = $E4;	# This is the background palette we want
 	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
 	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
 
+	A = $02;
+	[VBlank_Interrupt_Routine_Flags] = A;	# Use gameloop VBlank routine
+
+	A = $01;
+	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;	# Only enables VBlank interrupts
+
+	A = $E3;
+	[$FF00 + LCDC_REGISTER] = A;
+
 	# HL = OAM_Buffer_Counter_Start;
 
-	
-
-	label Test;
-	jump Test;
+	jump Game_Loop;
 }

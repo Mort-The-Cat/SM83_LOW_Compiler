@@ -71,8 +71,8 @@ subroutine LCD_Jump $0048
 	push HL;
 	A = [LCD_Interrupt_Routine_Flags];
 	A.0;
-	jump zero Title_Screen_LCD_Interrupt_Routine;
-	jump not_zero Title_Screen_Simple_LCD_Interrupt_Routine;
+	jump not_zero Title_Screen_LCD_Interrupt_Routine;
+	jump Title_Screen_Simple_LCD_Interrupt_Routine;
 }
 
 subroutine Init_Title_Screen_Sprites $0990
@@ -98,7 +98,7 @@ subroutine Init_Title_Screen_Sprites $0990
 	return;
 }
 
-subroutine Game_Loop_VBlank_Routine $2600
+subroutine Game_Loop_VBlank_Routine $2680
 {
 	push DE;
 	push BC;
@@ -106,7 +106,6 @@ subroutine Game_Loop_VBlank_Routine $2600
 	A = [OAM_Buffer_Counter_Start];
 	[OAM_Buffer_Counter] = A;
 
-	call Clean_OAM_Buffer;
 	call DMA_Transfer;
 
 	# Here, we'll want to run the scroll routines and such
@@ -185,7 +184,7 @@ subroutine VBlank_Handler $0860
 
 	jump not_zero Title_Screen_VBlank_Routine;	# 0006 - 0008
 
-	jump Title_Screen_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
+	jump Game_Loop_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
 
 	returni;							# 0009
 }
