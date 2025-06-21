@@ -240,7 +240,7 @@ subroutine Update_Player_Scroll $2600
 	jump Finished_Vertical_Clamping;
 
 	label Clamp_Top_Not_Necessary;
-	A < $15;
+	A < $17;
 	jump carry Clamp_Bottom_Not_Necessary;
 	A = $0E;
 	[$FF00 + C] = A;
@@ -280,9 +280,13 @@ subroutine Game_Loop $2700
 
 	# Do stuff that doesn't require VBlank
 
-	call Handle_Player_Physics;
+	call Update_Player_Scroll;	# This *does* touch the scroll register
+								# but that shouldn't be a problem if we
+								# change it soon enough after VBlank routines finish
 
-	call Update_Player_Scroll;	# This *does* touch the scroll register but that shouldn't be a problem
+	call Handle_Player_Physics;	# This *could* go earlier, but keeping a
+								# clean scroll is probably more important than
+								# the slightly improved response times
 	
 	call Clean_OAM_Buffer;	# This is updating the OAM *buffer* ($C000 - $C09F)
 							# So it doesn't require VRAM accesses
@@ -296,7 +300,7 @@ subroutine Game_Loop $2700
 
 	# Do graphics stuff
 
-	call Scroll_Routine;	# The scroll routine only really has time to update 1 whole column
+	# call Scroll_Routine;	# The scroll routine only really has time to update 1 whole column
 							# We should ideally base this on which direction the player has just moved
 
 	# Continue
@@ -338,6 +342,12 @@ subroutine Init_First_Level $1580
 	[$FF00 + Level_Width] = A;	# Sets offset level width
 
 	call Load_Start_Of_Level;
+
+	A = $00;	# Right 0 player state
+	[$FF00 + Player_State] = A;
+	[$FF00 + Player_Direction] = A;
+	A = $02;
+	[$FF00 + Player_Animation_Counter] = A;
 
 	A = $E4;	# This is the background palette we want
 	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;

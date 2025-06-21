@@ -1,18 +1,22 @@
 subroutine Handle_Player_Inputs $2800
 {
     A = CONTROLLER_DPAD_FLAG;
-    [$FF00 + CONTROLLER_REGISTER] = A;
-    [$FF00 + CONTROLLER_REGISTER] = A;
-    [$FF00 + CONTROLLER_REGISTER] = A;
-    [$FF00 + CONTROLLER_REGISTER] = A;  # Requires time to stabilise
+    C = CONTROLLER_REGISTER;
+    [$FF00 + C] = A;  # Requires time to stabilise
 
-    A = [$FF00 + CONTROLLER_REGISTER];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+
 
     B = A;
 
-    B.CONTROLLER_BUTTON_RIGHT_BIT;  # These values are zero when the button is pushed
     A = [$FF00 + Player_Direction];
-    A &= $7F;
+    D = A;
+    A &= $3F;
+    B.CONTROLLER_BUTTON_RIGHT_BIT;  # These values are zero when the button is pushed
     jump not_zero Right_Not_Pushed;
         A = $80;
         jump Left_Not_Pushed;       # We know that left hasn't been pushed
@@ -25,6 +29,30 @@ subroutine Handle_Player_Inputs $2800
     
     [$FF00 + Player_Direction] = A;
 
+    A = CONTROLLER_SSBA_FLAG;
+    [$FF00 + C] = A;
+
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+    A = [$FF00 + C];
+
+    A.CONTROLLER_BUTTON_A_BIT;
+    B = A;
+    A = [$FF00 + Player_Direction];
+    jump not_zero No_Jump;
+        A |= $40;
+    label No_Jump;
+
+    B.CONTROLLER_BUTTON_B_BIT;
+    jump not_zero No_Pew;
+    D.5;                        # Previous pew bit
+    jump not_zero No_Pew;
+        A |= $20;                           # Indicates that the player wants to pew
+    label No_Pew;
+
+    [$FF00 + Player_Direction] = A;
+
     # We won't worry about the rest for now
 
     return;
@@ -32,46 +60,465 @@ subroutine Handle_Player_Inputs $2800
 
 data Player_State_Table $2900
 {
-    # right 0
-    # right 1
-    # right 2
-    # right 3
+    # 00 - right 0
+        $29 $80
+    # 01 - right 1
+        $29 $80
+    # 02 - right 2
+        $29 $80
+    # 03 - right 3
+        $29 $80
 
-    # left 3
-    # left 2
-    # left 1
-    # left 0
+    # 04 - left 3
+        $29 $80
+    # 05 - left 2
+        $29 $80
+    # 06 - left 1
+        $29 $80
+    # 07 - left 0
+        $29 $80
 
-    # run right intro
-    # run right 0
-    # run right 1
+    # 08 - run right intro
+        $2B $00
+    # 09 - run right 0
+        $2B $00
+    # 0A - run right 1
+        $2B $00
 
-    # run left intro
-    # run left 0
-    # run left 1
+    # 0B - run left intro
+        $2B $00
+    # 0C - run left 0
+        $2B $00
+    # 0D - run left 1
+        $2B $00
+
+    # 0E - player jump right
+        $2F $00
+    # 0F - player jump left (bit 0 is set)
+        $2F $00
 }
 
-subroutine Stand_Or_Turnaround_Handler $2980
+data Player_Turnaround_Graphics $2A00
 {
+    # top-left, top-right
+    # bottom-left, bottom-right 
+
+    $00 $01
+    $02 $03
+
+    $0C $0D
+    $0E $0F
+
+    $10 $11
+    $12 $13
+
+    $14 $15
+    $16 $17
+
+    # Horizontal flipping, regular palette
+    $15 $14
+    $17 $16
+
+    # Horizontal flipping, regular palette
+    $11 $10
+    $13 $12
+
+    $0D $0C
+    $0F $0E
+
+    $01 $00
+    $03 $02
+
+    # Full turnaround animation ^^^
+
+    $20 $21
+    $04 $05
+
+    $08 $09
+    $06 $07
+
+    $08 $09
+    $0A $0B
+
+    # Left facing:
+    $21 $20
+    $05 $04
+
+    $09 $08
+    $07 $06
+
+    $09 $08
+    $0B $0A
+}
+
+data Player_Jump_Graphics $2A40 # This is a sprite chain, holding data for position offsets
+{
+    #YY  XX  TT
+    $00 $00 $22
+    $00 $08 $23
+
+    $08 $00 $28
+    $08 $08 $29
+
+    $10 $00 $26
+    $10 $08 $27
+
+    # Now, left facing:
+
+    $00 $08 $22
+    $00 $00 $23
+
+    $08 $08 $28
+    $08 $00 $29
+
+    $10 $08 $26
+    $10 $00 $27
+}
+
+subroutine Player_Run_Animation $2B00
+{
+    # Decrement animations and such
+    # Check if direction matches direction of current state
+    # If it doesn't, set to left 0 or right 0
+
+    # Otherwise, continue looping the animation
+
+    HL = Player_Animation_Counter;
+    [HL]--;
+
+    A = [$FF00 + Player_State];
+
+    jump not_zero Animation_Counter_Not_Reset;
+    [HL] = $05;
+
+    HL = Player_Direction;
+    A < $0B;
+    # If carry, the state is facing right
+    jump carry Right_State;
+        # This is a left-state
+        [HL].0;
+        jump zero Change_To_Left_Stand;
+        [HL].7;
+        jump zero Change_To_Left_Stand;
+            A++;
+            A < $0E;
+            jump not_zero Animation_Counter_Not_Reset;  # If we haven't reached the end, don't reset
+            A = $0C;                            # If we've reached the end, reset the animation
+            jump Animation_Counter_Not_Reset;
+        label Change_To_Left_Stand;
+            A = $07;
+            [$FF00 + Player_State] = A;
+            jump $2980;
+
+    label Right_State;
+        # this is a right-state
+        [HL].0;
+        jump not_zero Change_To_Right_Stand;
+        [HL].7;
+        jump zero Change_To_Right_Stand;
+            A++;
+            A < $0B;
+            jump not_zero Animation_Counter_Not_Reset;
+            A = $09;
+            jump Animation_Counter_Not_Reset;
+        label Change_To_Right_Stand;
+            A ^= A;
+            [$FF00 + Player_State] = A;
+            jump $2980;
+
+    label Animation_Counter_Not_Reset;
+
+    [$FF00 + Player_State] = A;
+
+    HL = Player_Direction;
+
+    D = $00;
+    A < $0B;
+    H = D;
+    jump carry Right_Facing_Sprite;
+    D = $20;
+    label Right_Facing_Sprite;
+
+    push DE;
+
+    L = A;
+
+    HL += HL;
+    HL += HL;
+    DE = Player_Turnaround_Graphics;
+    HL += DE;
+    D = H;
+    E = L;
+
+    call Place_Meta_Sprite_In_OAM;
+
+    return;
+}
+
+subroutine Player_Jump_Animation $2F00
+{
+    # Get graphics,
+    # Figure out if we've hit the ground yet,
+
+    # Place graphics
+
+    # Return
+
+    # If we're not facing the right direction, we also wanna
+    # stop the jump animation (because the turn around animation is nice) 
+    A = [$FF00 + Player_State];
+    A &= $01;
+    E = A;
+    A = [$FF00 + Player_Direction];
+    A &= $01;
+    A ^= E;         # If state direction xor player direction are different,
+    jump not_zero Stop_Jump_Animation;  # stop rn
+
+    A = [$FF00 + Player_Y_Vel];
+    A |= A;
+    jump not_zero Not_Touching_Ground_Yet;
+        label Stop_Jump_Animation;
+        A = [$FF00 + Player_State];
+        A &= $01;
+        E = A;
+        A += A; # x02
+        A += E; # x03
+        A += $08;
+        [$FF00 + Player_State] = A;
+        
+        A = $01;
+        [$FF00 + Player_Animation_Counter] = A;
+
+        jump Player_Run_Animation;
+
+    label Not_Touching_Ground_Yet;
+
+
+    DE = Player_Jump_Graphics;
+    A = [$FF00 + Player_Direction];
+    A.$00;  # If we're facing right,
+    jump zero Right_Facing;
+        A = $12;
+        A += E;
+        E = A;
+        BC = $2006;
+        jump Finished_Facing;
+    label Right_Facing;
+        BC = $0006;            # Sprite flags : $00, sprite count :$06
+    label Finished_Facing;
+
+    push BC;
+    call Place_Sprites_In_OAM;
+
+    return;
+}
+
+subroutine Player_Stand_Or_Turnaround_Animation $2980
+{
+    # Decrement player animation counter
+
+    HL = Player_Animation_Counter;
+    [HL]--;
+
+    # If counter is over, reset
+
+    jump not_zero Animation_Counter_Not_Reset;
+
+    [HL] = $08;             # Reset animation counter
+
+    HL = Player_Direction;
+
+    [HL].0;
     
+    jump zero Player_Direction_Right;
+
+    # If player direction is left,
+        # If the player can look further left,
+        A = [$FF00 + Player_State];
+        A < $07;
+        jump zero Run_Left;
+        A++;
+        [$FF00 + Player_State] = A;
+
+            # Increment player state
+        jump Animation_Counter_Not_Reset;
+
+        label Run_Left;
+
+        [HL].7;
+        jump zero Animation_Counter_Not_Reset;
+            A = $0B;                            # Run left intro
+            [$FF00 + Player_State] = A;
+            jump Player_Run_Animation;
+
+    label Player_Direction_Right;
+        # Else if player direction is right,
+            # If the player can look further right,
+                # Decrement player state
+        A = [$FF00 + Player_State];
+        A &= A;
+        jump zero Run_Right;
+        A--;
+        [$FF00 + Player_State] = A;
+        jump Animation_Counter_Not_Reset;
+
+        label Run_Right;
+
+        [HL].7;
+
+        jump zero Animation_Counter_Not_Reset;
+            A = $08;                            # Run right intro
+            [$FF00 + Player_State] = A;
+            jump Player_Run_Animation;
+
+    label Animation_Counter_Not_Reset;
+
+    # Decide sprite flags
+
+    A = [$FF00 + Player_State];
+    L = A;
+    A &= $04;
+    A >><= 1;
+    swap A;
+
+    push AF;        # This pushes the sprite flags for the sprite handler
+
+    H = $00;
+    
+    HL += HL;   # x2
+    HL += HL;   # x4
+
+    DE = Player_Turnaround_Graphics;
+
+    HL += DE;
+
+    D = H;
+    E = L;
+
+    call Place_Meta_Sprite_In_OAM;
+
+    # Decide player graphic
+
+    # Place player graphic
+
+    return;
 }
 
 subroutine Handle_Player_Animations $2880
 {
 
+    # Gets HL from Player State Table
+    # Calls that function
+
+    H = $29;
+    A = [$FF00 + Player_State];
+    A += A;
+    L = A;
+
+    A = [HL++];
+    L = [HL];
+    H = A;
+
+    jump HL;
+
+    # return;
 }
 
-subroutine Handle_Player_Physics $2780
+subroutine Player_Movement $2A80        # I don't like how much logic is required here,
+{                                       # but I can change it later
+    HL = Player_Direction;
+    [HL].0;
+
+    jump zero Facing_Right;
+        A = [$FF00 + Player_X_Vel];
+        A < $80;
+        jump not_carry No_Braking_Left;  # If the value is negative, don't brake
+        A |= A;                          # If it isn't, check if it's zero
+        jump not_zero Brake_Right;       # If it isn't zero, we need to brake
+
+        label No_Braking_Left;
+        [HL].7;
+        jump not_zero Move_Left;
+            label Brake_Left;
+            HL = Player_X_Vel;
+            A = [HL];
+            A++;
+            jump not_zero Half_Velocity_Left;
+                [HL] = A;                         # If the sign bit is the only one remaining, set vel to zero
+                jump Finished_Left_Right_Movement;
+            label Half_Velocity_Left;
+                [HL] >>= 1;                       # Otherwise, we can just arithmetically half it
+                jump Finished_Left_Right_Movement;
+        label Move_Left;
+            HL = Player_X_Vel;
+            C = [HL];
+            C--;
+            E = $B0;
+            call Min_Max;
+            [HL] = C;
+            jump Finished_Left_Right_Movement;
+    #
+
+    label Facing_Right;
+        A = [$FF00 + Player_X_Vel];
+        A < $80;    # carry means a positive value
+        jump not_carry Brake_Left; # Velocity is negative, we need to brake
+
+        [HL].7;
+        jump not_zero Move_Right;
+            label Brake_Right;
+            HL = Player_X_Vel;
+            [HL] >>= 1;         # Halves velocity to decelerate
+            jump Finished_Left_Right_Movement;   
+        label Move_Right;
+            HL = Player_X_Vel;
+            E = [HL];
+            E++;        # Velocity + 1
+            C = $40;    # Highest positive x velocity
+            call Min_Max;
+            [HL] = E;
+
+
+    label Finished_Left_Right_Movement;
+
+    return;
+}
+
+subroutine Get_Level_Tile_Flags $2C00
 {
-    call Handle_Player_Inputs;
+    # Will need to set up flags for every tile. With 1 byte per flag, we can encode lots of info
+    # That'll take $100 bytes in memory but that's nothing
+    byte X_Tile : B;
+    byte Y_Tile : C;
 
-    A = $08;
-    [$FF00 + Player_X_Vel] = A; # This just sets the player X vel to the test value we want!
+    H = $00;
+    L = B;
+    B = H;
 
+    HL += HL;   # x2
+    HL += HL;   # x4
+    HL += HL;   # x8
+    HL += HL;   # x16
+    HL += HL;   # x32
+
+    HL += BC;
+    BC = Intro_Level_Data;
+    HL += BC;
+    L = [HL];
+    H = $2D;
+
+    A |= [HL];
+
+    return;
+}
+
+subroutine Player_Environment_Collision_Detection $2E00
+{
     A ^= A;
     D = A;
     A = [$FF00 + Player_X_Vel];
     E = A;
+    E >>= 1;                        # Decreases the max speed, but allows for more gradual acceleration
     # Sets DE to player vel vector
 
     C = Player_X;
@@ -90,6 +537,237 @@ subroutine Handle_Player_Physics $2780
     [$FF00 + C] = A;
 
     # This adds player X vel to player X
+
+    A = [$FF00 + Player_X_Vel];
+
+    A.7;
+
+    A = [$FF00 + Player_Y];
+    C = A;
+    B = H;
+    jump zero Check_Right;
+        B--;
+        A ^= A;
+        push BC;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        C++;
+        call Get_Level_Tile_Flags;
+        A.Tile_Solid_Flag_Bit;
+        jump zero Finished_X_Checks;
+            C = Player_X;
+            A = [$FF00 + C];
+            A++;
+            [$FF00 + C] = A;
+            C++;
+            A ^= A;
+            [$FF00 + C] = A;
+
+            [$FF00 + Player_X_Vel] = A;
+            jump Finished_X_Checks;
+
+    label Check_Right;
+        B++;
+        A ^= A;
+        push BC;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        C++;
+        call Get_Level_Tile_Flags;
+        A.Tile_Solid_Flag_Bit;
+        # A is equal to (Tile_Top_Right | Tile_Bottom_Right)
+        jump zero Finished_X_Checks;
+            # If A != 0,
+            C = Player_X;
+            A = [$FF00 + C];
+            A--;
+            [$FF00 + C] = A;
+            C++;
+            A = $FF;
+            [$FF00 + C] = A;
+
+            A ^= A;
+            [$FF00 + Player_X_Vel] = A;
+
+    label Finished_X_Checks;
+
+    #
+
+    HL = Player_Y_Vel;
+    A = [HL];
+    A &= $FE;   # Zeroes out bit-0
+    A < $7E;    # If we're at the max fall velocity
+    jump zero Speed_Cap;    # We can skip gravity
+        [HL]++;
+        [HL]++;
+    label Speed_Cap;
+
+    #[HL]++;
+    #[HL]++;             # Gravity
+    #A = $01;
+    #A < [HL];           # If $01 < Player_Y_Vel (carry flag if true)
+    #jump carry No_Speed_Cap;
+    #    [HL] = $7F;     # Caps speed to 7 pixels per second
+    #label No_Speed_Cap;
+
+    A ^= A;
+    D = A;
+    #A = [$FF00 + Player_Y_Vel];
+    E = [HL];
+    E >>= 1;                        # aeiou
+
+    C = Player_Y;
+    A = [$FF00 + C];
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    L = A;
+
+    call Add_Delta_To_Word;
+
+    A = L;
+    [$FF00 + C] = A;
+    C--;
+    A = H;
+    [$FF00 + C] = A;
+
+    A = [$FF00 + Player_Y_Vel];
+    A.7;    # Gets sign thereof
+
+    jump zero Check_Down;
+        A = [$FF00 + Player_X];
+        B = A;
+        B--;
+        C = H;
+        # C--;
+        push BC;
+        A ^= A;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        B++;
+        push BC;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        B++;
+        call Get_Level_Tile_Flags;
+
+        push AF;
+        HL = Player_Direction;
+        [HL].6;
+        jump not_zero Jump_Continued;
+            A++;
+            A++;
+            # A++;
+            [$FF00 + Player_Y_Vel] = A;
+        label Jump_Continued;
+        pop AF;
+
+        A.Tile_Platform_Flag_Bit;
+        jump not_zero Finished_Y_Checks;
+        A.Tile_Solid_Flag_Bit;
+        jump zero Finished_Y_Checks;
+            C = Player_Y;
+            A = [$FF00 + C];
+            A++;
+            [$FF00 + C] = A;
+            C++;
+            A ^= A;
+            [$FF00 + C] = A;
+            A--;
+            [$FF00 + Player_Y_Vel] = A;
+        jump Finished_Y_Checks;
+
+    label Check_Down;
+        A = [$FF00 + Player_X];
+        B = A;
+        B--;
+        C = H;
+        C++;
+        C++;
+        push BC;
+        A ^= A;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        B++;
+        push BC;
+        call Get_Level_Tile_Flags;
+        pop BC;
+        B++;
+        call Get_Level_Tile_Flags;
+
+        jump zero Finished_Y_Checks;
+            C = Player_Y;
+            A ^= A;
+            C++;
+            [$FF00 + C] = A;
+            B = A;
+            A = [$FF00 + Player_Direction];
+            A.6;
+            A = B;
+            jump zero No_Jump;
+                A -= $40;
+
+                B = A;
+
+                A = [$FF00 + Player_X_Vel];
+                A.7;
+                jump zero Positive_Velocity;
+                    A ^= $FF;
+                    A++;
+                    # Get the magnitude of 2's compliment number
+                label Positive_Velocity;
+
+                A < $28;
+                jump carry No_Jump_Animation;
+                    E = $0E;
+                    A = [$FF00 + Player_Direction];
+                    A &= $01;
+                    A += E;
+                    [$FF00 + Player_State] = A;
+                label No_Jump_Animation;
+                A = B;
+
+                #B = A;
+                #A = [$FF00 + Player_State];
+                #A--;
+                #A < $05;
+                #jump carry No_Jump_Animation;
+                #    E = $0E;
+                #    A = [$FF00 + Player_Direction];
+                #    A &= $01;
+                #    A += E;
+                #    [$FF00 + Player_State] = A;
+                #label No_Jump_Animation;
+                #A = B;
+
+                # I'll rework this so that it checks for jump animation BEFORE the animation is handled
+                # This'll make the animations nicer
+
+            label No_Jump;
+            [$FF00 + Player_Y_Vel] = A;
+
+    label Finished_Y_Checks;
+
+    # We'll want to test 2 points for player collision.
+
+    # If the left flags are set, Player_X = Player_X + 1 and Player_X_Low = 0
+    # et vice versa
+
+    # Add player Y vel to player Y will be added later
+
+    return;
+}
+
+subroutine Handle_Player_Physics $2780
+{
+    call Handle_Player_Inputs;
+
+    call Player_Movement;
+
+    # A = $08;
+    # [$FF00 + Player_X_Vel] = A; # This just sets the player X vel to the test value we want!
+
+    call Player_Environment_Collision_Detection;
 
     # Next, we want to place player sprite on screen
 
