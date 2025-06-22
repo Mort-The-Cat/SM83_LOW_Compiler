@@ -491,6 +491,7 @@ subroutine Get_Level_Tile_Flags $2C00
     byte X_Tile : B;
     byte Y_Tile : C;
 
+    #A ^= A;
     H = $00;
     L = B;
     B = H;
@@ -502,7 +503,8 @@ subroutine Get_Level_Tile_Flags $2C00
     HL += HL;   # x32
 
     HL += BC;
-    BC = Intro_Level_Data;
+    C = $00; 
+    B = $D0;            # Work RAM (Where the loaded level data is located)
     HL += BC;
     L = [HL];
     H = $2D;

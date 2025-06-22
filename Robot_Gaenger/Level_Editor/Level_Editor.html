@@ -33,12 +33,21 @@
 
 <img id="img" onclick = "Output_Level_Data();" src="Export.jpg" width="20" height = "20"></img>
 
+<img id="s_img" onclick = "RLE_Encode_Level_Data();" src="Export.jpg" width = "20" height = "20"></img>
+
 <img id="img" onclick = "Get_Level_Data_From_File();" src="Download.jpg" width="20" height="20"></img>
+
+<img id="s_img" onclick = "Get_RLE_Level_Data_From_File();" src="Download.jpg" width="20" height="20"></img>
 
 <style>
     #img
     {
         border : 2px solid black;
+    }
+    #s_img
+    {
+        border : 2px solid purple;
+        box-shadow: 0 20px rgba(204, 0, 255, 0.6) inset;
     }
 </style>
 
@@ -61,7 +70,7 @@
 
 <script>
 
-var Level_Length = 64;
+var Level_Length = 128;
 var Level_Data = new Uint8Array(32 * Level_Length);
 
 var Selected_Draw_Tool;
@@ -91,6 +100,51 @@ function Get_Hex(Value)
     return ("$" + Hexadecimals[Value >> 4]) + Hexadecimals[Value & 15];
 }
 
+function Get_RLE_Level_Data_From_File()
+{
+    if(!confirm("Are you sure you want to import this RLE tilemap?"))
+        return;
+
+    let String = document.getElementById('tilemap').value;
+    String = String.replace(/[^0-9A-F]/g, '');
+    let RLE_Bytes = new Uint8Array(String.match(/.{1,2}/g).map(Byte => parseInt(Byte, 16)));
+
+    // From here, we want to run the clean RLE unpacking
+
+    let Stack = 0;
+    let Index = 0;
+    let Count = 0;
+    while(Index < RLE_Bytes.length)
+    {
+        Count = RLE_Bytes[Index++];
+        if(Count > 0x80)
+        {
+            Count -= 0x80;
+            while(Count != 0)
+            {
+                Level_Data[Stack++] = RLE_Bytes[Index++];
+                Count--;
+            }
+        }
+        else
+        {
+            while(Count != 0)
+            {
+                Level_Data[Stack++] = RLE_Bytes[Index];
+                Count--;
+            }
+
+            Index++;
+        }
+    }
+
+    // Level_Data = new Uint8Array(Level_Data);
+
+    // Set Level_Data and Render_Level()
+
+    Render_Level();
+}
+
 function Get_Level_Data_From_File()
 {
     // This'll just read the level data tbh
@@ -105,9 +159,88 @@ function Get_Level_Data_From_File()
     Render_Level();
 }
 
-function Output_Level_Data()
+function RLE_Encode_Level_Data()
+{
+    let RLE_Encoded_Bytes = [];
+    let Last_Byte = 0x100;
+    let Length = 0;
+    let Index = 0;
+    for(let X = 0; X < Level_Length; X++)
+    {
+        for(let Y = 0; Y < 32; Y++)
+        {
+            if(Last_Byte == Level_Data[Index])
+            {
+                Length++;
+            }
+            else
+            {
+                if(Last_Byte != 0x100)
+                {
+                    RLE_Encoded_Bytes.push(Length);
+                    RLE_Encoded_Bytes.push(Last_Byte);
+                }
+                Length = 1;
+                Last_Byte = Level_Data[Index];
+            }
+
+            Index++;
+        }
+    }
+
+    RLE_Encoded_Bytes.push(Length);
+    RLE_Encoded_Bytes.push(Last_Byte);
+
+    console.log(RLE_Encoded_Bytes.length);
+
+    // Gets first pass
+
+    let Clean_RLE_Encoded_Bytes = [];
+    
+    Index = 0;
+    while(Index < RLE_Encoded_Bytes.length)
+    {
+        if(RLE_Encoded_Bytes[Index] != 1)
+        {
+            Clean_RLE_Encoded_Bytes.push(RLE_Encoded_Bytes[Index++]);
+            Clean_RLE_Encoded_Bytes.push(RLE_Encoded_Bytes[Index++]);
+        }
+        else
+        {
+            Index++;
+            Length = 1;
+            let Bytes = [];
+            Bytes.push(RLE_Encoded_Bytes[Index++]);
+            while(RLE_Encoded_Bytes[Index] == 1 && Index < RLE_Encoded_Bytes.length)
+            {
+                Length++;
+                Index++;
+                Bytes.push(RLE_Encoded_Bytes[Index++]);
+            }
+            Clean_RLE_Encoded_Bytes.push(Length | 0x80);    // Set the single flag
+            Clean_RLE_Encoded_Bytes = Clean_RLE_Encoded_Bytes.concat(Bytes);
+        }
+    }
+
+    Output_Data(Clean_RLE_Encoded_Bytes);
+}
+
+function Output_Data(Local_Data)
 {
     let Output = "";
+    let Index = 0;
+    while(Index < Local_Data.length)
+    {
+        Output += Get_Hex(Local_Data[Index]) + (((1 + Index) & 31) == 0 ? "\n" : " ");
+        Index++;
+    }
+
+    document.getElementById("tilemap").value = Output;
+}
+
+function Output_Level_Data()
+{
+    /*let Output = "";
     let Index = 0;
     for(let X = 0; X < Level_Length; X++)
     {
@@ -119,7 +252,8 @@ function Output_Level_Data()
         Output += "\n";
     }
 
-    document.getElementById("tilemap").value = Output;
+    document.getElementById("tilemap").value = Output;*/
+    Output_Data(Level_Data);
 }
 
 function Mouse_Up(Event)
@@ -212,7 +346,7 @@ function Render_Level()
     Level_Context.fillStyle = "LightCoral";
     Level_Context.fillRect(0, 0, Level_Canvas.width, Level_Canvas.height);
     let Index = 0;
-    for(let X = 0; X < 64; X++)
+    for(let X = 0; X < Level_Length; X++)
     {
         for(let Y = 0; Y < 32; Y++)
         {
@@ -313,8 +447,9 @@ function Init_Page()
     
     Level_Scale = 1;
 
-    Level_Canvas.width *= Level_Scale;
     Level_Canvas.height *= Level_Scale;
+    Level_Canvas.width = Level_Canvas.height * Level_Length / 32;
+
 }
 
 </script>

@@ -51,7 +51,7 @@ file Robot_Gaenger/Title_BOT_Letters.td;
 
 macro Intro_Level_Data_Size $0800;
 data Intro_Level_Data $1D00
-file Robot_Gaenger/Test_Level_Data.td;
+file Robot_Gaenger/Test_Level_Data_RLE.td;
 
 # This is exactly $100 bytes long
 data Tile_Attributes_Table $2D00

@@ -81,3 +81,39 @@ subroutine Min_Max $0030
 	E = A;				# 0034
 	return;				# 0035
 }
+
+subroutine Run_Length_Encoding_Load $2F80
+{
+	word Source : HL;
+	word Destination : BC;
+	byte Count : DE;
+
+	# D >>>= 1;
+	# E |>><= 1;
+
+	label RLE_Loop;
+		A = [HL++];
+		A |= A;
+		return zero;	# A run-length of zero indicates end of file
+		A.7;
+		jump not_zero Non_RLE;
+		E = A;
+		A = [HL++];
+		label Copy_Loop;
+			[BC] = A;
+			BC++;
+			E--;
+		jump not_zero Copy_Loop;
+	jump RLE_Loop;
+
+	label Non_RLE;
+		A &= $7F;
+		E = A;
+		label Non_RLE_Loop;
+		A = [HL++];
+		[BC] = A;
+		BC++;
+		E--;
+		jump not_zero Non_RLE_Loop;
+	jump RLE_Loop;
+}

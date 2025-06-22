@@ -72,7 +72,8 @@ subroutine LCD_Jump $0048
 	A = [LCD_Interrupt_Routine_Flags];
 	A.0;
 	jump not_zero Title_Screen_LCD_Interrupt_Routine;
-	jump Title_Screen_Simple_LCD_Interrupt_Routine;
+	A.1;
+	jump Title_Screen_Simple_LCD_Interrupt_Routine; 
 }
 
 subroutine Init_Title_Screen_Sprites $0990
