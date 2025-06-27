@@ -348,7 +348,7 @@ subroutine Init_First_Level $1580
 	C++;
 	[$FF00 + C] = A;
 
-	A = $3F;	# 64 tiles
+	A = $7F;	# 64 tiles
 	A += $F6;	# - 10 tiles (to account for screen width/2)
 	[$FF00 + Level_Width] = A;	# Sets offset level width
 

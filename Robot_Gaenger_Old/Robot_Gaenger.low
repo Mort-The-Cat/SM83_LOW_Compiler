@@ -1,0 +1,303 @@
+
+
+file Logo_Data.td;
+file LOW_Macros.low;
+
+file Robot_Gaenger/Memory_Copy.low;
+
+file Robot_Gaenger/Global_Variables.low;
+
+file Robot_Gaenger/DMA_Handler.low;
+
+file Robot_Gaenger/Meta_Sprite_Handling.low;
+
+file Robot_Gaenger/Screen_Interrupts.low;
+
+# Memory from 0120 onwards is fairly accessable!
+
+macro Alphabet_Tile_Data_Size $02E0;
+data Alphabet_Tile_Data $0150
+file Robot_Gaenger/Alphabet_Tiles.td;		# $0150 - $042F
+
+macro Title_Tile_Data_Size $00E0;
+data Title_Tile_Data $0430
+file Robot_Gaenger/Title.td;				# $0430 - $050F
+
+macro Brick_Background_Tile_Data_Size $0020;
+data Brick_Background_Tile_Data $0510
+file Robot_Gaenger/Brick_16_16.td;			# $0510 - $052F
+
+# Note that this uses grey and black pixels! (02/03) the title screen should use white and light-grey (00/01)
+
+macro Parallax_Brick_Background_Tile_Data_Size $0010;
+data Parallax_Brick_Background_Tile_Data $0530
+file Robot_Gaenger/Parallax_Brick_Background.td;	# $04F0 - $04F7
+
+macro Robot_Graphics_Size $02D0;
+data Robot_Graphics_Data $1700
+file Robot_Gaenger/Robot_Graphics.td;		# $04F8 - $06F7
+
+macro Cloud_Graphics_Size $0090;
+data Cloud_Graphics_Data $1A00
+file Robot_Gaenger/Cloud_Graphics.td;
+
+macro Shaded_Brick_Graphics_Size $01A0;
+data Shaded_Brick_Graphics_Data $1A90
+file Robot_Gaenger/Shaded_Brick.td;
+
+macro Title_Bot_Letters_Size $0046;
+data Title_Bot_Letters_Data $1400
+file Robot_Gaenger/Title_BOT_Letters.td;
+
+macro Intro_Level_Data_Size $1000;
+data Intro_Level_Data $3000
+file Robot_Gaenger/Long_Level_Data_RLE.td;
+
+macro Enemy_Graphics_Data_Size $0190;
+data Enemy_Graphics_Data $1D00
+file Robot_Gaenger/Enemy_Graphics_Data.td;
+
+# This is exactly $100 bytes long
+data Tile_Attributes_Table $2D00
+file Robot_Gaenger/Tile_Flags_Data.td;
+
+file Robot_Gaenger/Player_State_Handler.low;
+
+file Robot_Gaenger/Level_Handler.low;
+
+subroutine Title_Screen_Loop_Routine $1300
+{
+	label Wait_For_VBlank_Loop;
+
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_For_VBlank_Loop;
+
+	C = CONTROLLER_REGISTER;
+	A = CONTROLLER_SSBA_FLAG;
+	[$FF00 + C] = A;
+	A = [$FF00 + C];
+	A = [$FF00 + C];
+	A = [$FF00 + C];
+	A = [$FF00 + C];	# It's standard to get the input a couple of times to allow time for the value to stabilise
+	A = [$FF00 + C];
+
+	A &= CONTROLLER_BUTTON_START;
+
+	jump not_zero Wait_For_VBlank_Loop;
+
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL] = $02;							# Use the non-wavy HBlank routine
+
+	HL = Global_Animation_Counter;
+	[HL] = $01;						# Reset the global animation counter
+
+	A ^= A;
+	[OAM_Buffer_Counter_Start] = A;
+
+	label Test_Loop;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump not_carry Test_Loop;		# This waits for VBlank to end
+
+	label Wait_Until_Next_Scanline;
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump carry Wait_Until_Next_Scanline;	# This waits until VBlank
+
+	# Increment the window register thingy once every frame!!
+
+	C = WINDOW_SCROLL_Y_REGISTER;
+	A = [$FF00 + C];
+	A < $91;						# If carry, Window_Scroll_Y_Register is off screen
+	jump not_carry Init_First_Level;		# If that's the case, stop scrolling it
+
+	# Otherwise, decrement the global animation counter
+	HL = Global_Animation_Counter;
+	[HL]--;
+	jump not_zero Test_Loop;		# If the timer hasn't run out yet, no worries!
+	A++;
+	[$FF00 + C] = A;				# Increment the Window_Scroll_Y_Register
+	[HL] = $01;						# Reset the global animation counter
+
+	jump Test_Loop;
+}
+
+subroutine Init_Title_Screen $0730
+{
+	SP = $CFFF;	# This places the stack where we want it to go
+
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL] = $01;							# Use the wavy HBlank routine
+
+	HL = VBlank_Interrupt_Routine_Flags;
+	[HL] = $01;
+
+	call Init_HRAM_DMA_Function;
+
+	HL = $C000;
+	DE = $00A0;
+	B = $00;
+	call Memset;				# Clears OAM buffer
+
+	A = $80;
+	[$FF00 + LCDC_REGISTER] = A;
+
+	label Wait_For_VBlank_Loop;
+
+	A = [$FF00 + LCDY_REGISTER];
+	A < $91;
+	jump not_zero Wait_For_VBlank_Loop;
+
+	A ^= A;
+	[$FF00 + LCDC_REGISTER] = A;		# Turns off LCD so we can load in new data
+
+	HL = Alphabet_Tile_Data;
+	BC = VRAM_BLOCK_1;		# This is location $8800 in VRAM
+	DE = Alphabet_Tile_Data_Size;
+	call Memcpy;
+
+	HL = Title_Tile_Data;
+	DE = Title_Tile_Data_Size;
+	call Memcpy;
+
+	HL = Robot_Graphics_Data;
+	BC = VRAM_BLOCK_0;
+	DE = Robot_Graphics_Size;
+	call Memcpy;
+
+	HL = Enemy_Graphics_Data;
+	DE = Enemy_Graphics_Data_Size;
+	call Memcpy;
+
+	BC = VRAM_BLOCK_2;
+		# HL = Brick_Background_Tile_Data;
+		# DE = Brick_Background_Tile_Data_Size;
+		# call Memcpy;
+
+	HL = Brick_Background_Tile_Data;
+	DE = $0030;
+
+	label Load_Parallax_Brick_Background_Loop;
+		A = [HL++];
+		[BC] = A;
+		BC++;
+		A ^= A;
+		[BC] = A;
+		BC++;
+
+		DE--;
+		A = D;
+		A |= E;
+	jump not_zero Load_Parallax_Brick_Background_Loop;
+
+	HL = $81C0;
+	DE = $0040;
+	call Memcpy;	# This copies the Robot_Graphics bricks into the 2nd VRAM Block
+
+	HL = Cloud_Graphics_Data;
+	DE = Cloud_Graphics_Size;
+	call Memcpy;
+
+	HL = Shaded_Brick_Graphics_Data;
+	DE = Shaded_Brick_Graphics_Size;
+	call Memcpy;
+
+	HL = VRAM_TILEM_1;
+	DE = $0020;
+	B = $AE;	# Top tile thereof
+	call Memset;
+
+	DE = $00A0;
+	B = $B0;	# Blank title tile
+	call Memset;
+	DE = $0020;
+	B = $AF;
+	call Memset;
+
+	HL = Title_Bot_Letters_Data;
+	BC = $9C23;
+
+	D = $05;
+	label Local_Memcpy_Title_Bot_Letters;
+	push DE;
+	DE = $000E;
+	call Memcpy;
+	A = C;
+	A += $12;
+	C = A;
+	pop DE;
+	D--;
+	jump not_zero Local_Memcpy_Title_Bot_Letters;
+
+	#
+
+	HL = VRAM_TILEM_0;	# Background layer
+	B = $02;
+	C = $03;
+	D = $20;
+	A ^= A;
+	label Local_Fill_Background_Tilemap;
+	E = $10;
+	A &= C;
+	label Four_Byte_Pattern;
+	[HL++] = A;
+	A++;
+	[HL++] = A;
+	A++;
+	A &= C;
+	E--;
+	jump not_zero Four_Byte_Pattern;
+	A += B;
+	D--;
+	jump not_zero Local_Fill_Background_Tilemap;
+
+	# 
+
+	call Init_Title_Screen_Sprites;
+
+	A = [OAM_Buffer_Counter];
+	[OAM_Buffer_Counter_Start] = A;
+
+	# Place static title screen sprites in OAM
+
+	# Set all of the palette information
+	
+	A = $10;
+	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
+
+	A = $E4;
+
+	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+
+	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+
+	A++;
+
+	[$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
+
+	#
+
+	A = $03;
+
+	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
+
+	A = $47;
+
+	[$FF00 + LYC_REGISTER] = A;
+
+	#
+
+	A = $E3;
+
+	[$FF00 + LCDC_REGISTER] = A;
+
+	enablei;
+
+	jump Title_Screen_Loop_Routine;
+}
+
+subroutine Main_Jump $0100
+{
+	jump Init_Title_Screen;
+}

@@ -73,6 +73,20 @@ void Handle_Identifiers(Vector* Target_Tokens, unsigned int Index, const Vector*
 	}
 }
 
+char* Get_Hex_String_From_Word(unsigned int Value) // At most 16 bits
+{
+	char* Hex_String = malloc(6u); // $ character, 4 hex characters, and null-terminator
+	Hex_String[0] = '$';
+	Hex_String[5] = 0u;
+
+	Hex_String[1] = "0123456789ABCDEF"[Value >> 12u];
+	Hex_String[2] = "0123456789ABCDEF"[(Value >> 8u) & 0xF];
+	Hex_String[3] = "0123456789ABCDEF"[(Value >> 4u) & 0xF];
+	Hex_String[4] = "0123456789ABCDEF"[Value & 0xF];
+
+	return Hex_String;
+}
+
 void Place_Identifiers(Vector* Target_Tokens)
 {
 	Vector Identifiers = { 0, 0, 0 };
@@ -152,6 +166,28 @@ typedef struct
 	unsigned int Code;
 	unsigned char* Identifier;
 } Byte_Code;
+
+void Place_Automem_Identifiers(Vector* Target_Tokens, Byte_Code Byte)	// "Byte" here is the token that we want to replace as well as its desired val
+{
+	Token New_Token;
+	New_Token.Representation = Get_Hex_String_From_Word(Byte.Code);
+	New_Token.Token = T_HEX_LITERAL;
+
+	Token* T;
+
+	unsigned int Index = 0;
+
+	while (Index < Target_Tokens->Size)
+	{
+		T = (Token*)(Target_Tokens->Data + Index);
+		if (!strcmp(Byte.Identifier, T->Representation))
+		{
+			*T = New_Token;
+		}
+
+		Index += sizeof(Token);
+	}
+}
 
 /*typedef struct
 {
@@ -276,6 +312,8 @@ void Generate_Byte_Code(const Vector* Tokens)
 			{
 				Byte.Code = ROM_Index;
 				Byte.Identifier = T[1].Representation;
+
+				Place_Automem_Identifiers(Tokens, Byte);
 
 				Vector_Push_Memory(&Identifiers, (unsigned char*)&Byte, sizeof(Byte_Code));
 				Token_Index += sizeof(Token) * 2;

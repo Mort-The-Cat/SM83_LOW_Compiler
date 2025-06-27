@@ -1,0 +1,154 @@
+data Game_Object_Function_Table $4080
+{
+    # 00 Sentry left 00 (idle function)
+        
+    # 01 Sentry shoot_left 00 (left shoot function)
+
+    # 02 Sentry left 01
+
+    # 03 Sentry shoot_left 01
+
+    # 04 Sentry left 02
+
+    # 05 Sentry shoot_left 02
+
+    #
+
+    # 
+}
+
+data Game_Object_Graphic_Table $4180
+{
+    # 00 Sentry left 00
+        $2E $2D
+        $34 $33
+    # 01 Sentry shoot_left 00
+        $2E $2D
+        $34 $33
+    # 02 Sentry left 01
+        $30 $2F
+        $34 $35
+    # 03 Sentry shoot_left 01
+        $30 $2F
+        $34 $35
+    # 04 Sentry left 02
+        $32 $31
+        $34 $36
+    # 05 Sentry shoot_left 02
+        $32 $31
+        $34 $36
+    #
+
+
+}
+
+subroutine Push_Sprite_Screen_Offsets $4000
+{
+    # SP + $FE
+    # SP + $FF are previous DE values
+
+    # SP + $00
+    # SP + $01 are function return pointers
+
+    byte Offset : E;
+
+    C = Camera_Scroll_Y;
+    A = [$FF00 + C];
+    A ~= A;
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    D = $C1;    # This is the beginning of the object buffer
+    A = [DE];
+    B = A;
+    E++;
+    A = [DE];
+    C = A;
+
+    HL += BC;
+
+    HL += HL;
+    HL += HL;
+    HL += HL;   # H = TTTTTPPP (screen space format)
+
+    A = $10;
+    A += H;
+    push AF;    # just saves for later
+
+    C = Camera_Scroll_X;
+    A = [$FF00 + C];
+    A ~= A;
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    E++;
+    A = [DE];
+    B = A;
+    E++;
+    A = [DE];
+    C = A;
+
+    HL += BC;
+
+    HL += HL;
+    HL += HL;
+    HL += HL;
+
+    A = $08;
+    A += H;
+
+    pop BC;     # Puts saved value back in BC
+    pop HL;     # Gets function return pointer
+    pop DE;     # Gets back previous DE value
+    push DE;    
+    C = A;
+    push BC;    # Pushes Y/X screen coords
+
+    jump HL;    # Returns from function
+}
+
+subroutine Handle_All_Game_Objects $4100
+{
+    # Iterates through game objects
+
+    DE = $C100;
+
+    label Iterate_Game_Objects;
+
+    push DE;    # Saves for later
+    call Push_Sprite_Screen_Offsets;
+    A = $04;
+    A += E;
+    E = A;
+
+    HL = Game_Object_Function_Table;
+    A = [DE];
+    call Handle_State_Table_Function;
+
+    pop DE;
+    A = $08;
+    A += E;     # Don't have to worry about carries into D because object buffer only $100 bytes long
+    E = A;
+    A < $00;
+
+    jump not_zero Iterate_Game_Objects;
+
+    # Pushes Y/X screen coords
+
+    # Runs control/animation function
+
+    return;
+}
+
+subroutine Create_Sentry_Object $4200
+{
+    
+}

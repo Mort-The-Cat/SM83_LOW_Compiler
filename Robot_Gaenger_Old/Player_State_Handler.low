@@ -404,16 +404,18 @@ subroutine Player_Stand_Or_Turnaround_Animation $2980
     return;
 }
 
-subroutine Handle_Player_Animations $2880
+subroutine Handle_State_Table_Function $2880
 {
 
     # Gets HL from Player State Table
     # Calls that function
 
-    H = $29;
-    A = [$FF00 + Player_State];
+    #H = $29;
+    #A = [$FF00 + Player_State];
     A += A;
+    A += L;
     L = A;
+    #L = A;
 
     A = [HL++];
     L = [HL];
@@ -641,12 +643,16 @@ subroutine Player_Environment_Collision_Detection $2E00
         B = A;
         B--;
         C = H;
+
+        A ^= A;
+
         # C--;
         push BC;
-        A ^= A;
+        # A ^= A;
         call Get_Level_Tile_Flags;
         pop BC;
         B++;
+
         push BC;
         call Get_Level_Tile_Flags;
         pop BC;
@@ -686,11 +692,15 @@ subroutine Player_Environment_Collision_Detection $2E00
         C = H;
         C++;
         C++;
-        push BC;
+
         A ^= A;
+
+        push BC;
+        # A ^= A;
         call Get_Level_Tile_Flags;
         pop BC;
         B++;
+
         push BC;
         call Get_Level_Tile_Flags;
         pop BC;
@@ -831,7 +841,9 @@ subroutine Handle_Player_Physics $2780
 
     push BC;        # This pushes Y and X values of sprite to screen
 
-    jump Handle_Player_Animations;
+    HL = Player_State_Table;
+    A = [$FF00 + Player_State];
+    jump Handle_State_Table_Function;
 
     # B = $00;
     # push BC;

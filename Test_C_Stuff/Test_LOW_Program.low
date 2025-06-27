@@ -1,0 +1,295 @@
+macro placeholder $0000;
+
+subroutine Memcpy $0010
+{
+	word Source : HL;
+	word Destination : BC;
+	word Count : DE;
+
+	label Local_Copy_Loop;
+	A = [HL++];				# 0010
+	[BC] = A;				# 0011
+	BC++;
+	DE--;					# 0012
+	A = D;					# 0013
+	A |= E;					# 0014
+	jump not_zero Local_Copy_Loop;	# 0015-0016
+	return;					# 0017
+}
+
+file Logo_Data.td;
+
+macro SIN_TABLE_SIZE $0100;
+data SIN_Table_Data $0200
+file Test_Program/SIN_Table.td;
+
+macro Alphabet_Tile_Data_Size $02E0;
+data Alphabet_Tile_Data
+file Test_Program/Alphabet_Tiles.td;
+
+macro PLAYER_GRAPHICS_SIZE $0100;
+data Player_Graphics_Data
+file Test_Program/Player_Tiles.td;
+
+file LOW_Macros.low;
+
+data Hello_World
+{
+	$11 $0E $15 $15 $18 $25				# "Hello,"
+	$20 $18 $1B $15 $0D					# "World"
+	$26 $26 $26 $26 $26					# "!!!!!"
+	$16 $12 $0C $11 $0A $0E $15			# "Michael"
+	$20 $0A $1C							# "was"
+	$11 $0E $1B $0E						# "here"
+}
+
+data Player_Tile_Map
+{
+	$00 $01 $3F		$00 $01 $3F		$00 $01 $3F
+	$02 $03 $04		$05 $06 $07		$08 $09 $04
+	$0B	$0C $0A		$0E $0F $0D		$0E $0C $0A
+}
+
+subroutine Load_Mem_Vblank_Procedure 
+{
+	# Vblank is happening! We're allowed to access VRAM...
+
+	HL = Alphabet_Tile_Data;
+	BC = VRAM_BLOCK_0;
+	DE = Alphabet_Tile_Data_Size;
+
+	call Memcpy;
+
+	HL = Player_Graphics_Data;
+	DE = PLAYER_GRAPHICS_SIZE;
+
+	call Memcpy;
+
+	HL = $9800;
+	DE = $0400;
+	A = $3F;
+
+	C = A;
+	label Local_Memset;
+	[HL++] = A;
+	DE--;
+	A = D;
+	A |= E;
+	A = C;
+	jump not_zero Local_Memset;
+
+	HL = $FE00;
+	E = $A0;
+	A = $00;
+
+	label Local_OAM_Clear;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_OAM_Clear;
+
+	A = $E4;
+	[$FF47] = A;					# Background palette
+
+	[$FF48] = A;
+	A = $4E;
+	[$FF49] = A;
+
+	DE = $9828;
+	HL = Player_Tile_Map;
+	C = $03;
+
+	label Player_Tile_Memset_0;
+	B = $09;
+	label Player_Tile_Memset_1;
+	A = [HL++];
+	A += $2E;
+	[DE] = A;
+	DE++;
+	B--;
+	jump not_zero Player_Tile_Memset_1;
+	A = E;
+	A += $17;
+	E = A;
+	C--;
+	jump not_zero Player_Tile_Memset_0;
+
+	BC = Hello_World;
+	HL = $996A;
+	# DE = $001F;
+
+	E = $06;
+
+	label Local_Hello;
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Hello;
+
+	DE = $0018;
+	HL += DE;
+	E = $0A;
+
+	label Local_World;	
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_World;
+
+	DE = $0035;
+	HL += DE;
+	E = $7;
+
+	label Local_Michael;
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Michael;
+
+	HL++;
+	E = $03;
+
+	label Local_Was;
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Was;
+
+	DE = $0016;
+	HL += DE;
+	E = $04;
+
+	label Local_Here;
+	A = [BC];
+	BC++;
+	[HL++] = A;
+	E--;
+	jump not_zero Local_Here;
+
+	A = $81;
+
+	[LCDC_REGISTER] = A; # Enable PPU and background
+
+	A ^= A;
+
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	returni;	# End of interrupt, we want to return and enable interrupts again
+}
+
+subroutine Hblank_Scroll_Routine 
+{
+	push HL;
+	HL = SIN_Table_Data;
+ 	A = [LCDY_REGISTER];
+	A -= $30;
+	A += A;
+ 	L = A;
+ 	A = [HL];
+	A >>>= 1;
+ 	pop HL;
+ 	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+ 
+ 	returni;
+}
+
+subroutine Set_Sprite_VBLANK 
+{
+	push HL;
+
+	D = $02;				# SIN_Table_Data
+	E = L;					# Indexes the global frame counter into it
+	A = [DE];				# Gets value from table
+	A >>>= 1;
+	A >>>= 1;
+	A += $10;
+
+	E = A;
+
+	HL = $FE00;
+
+	[HL++] = A;				# Sets Y value to that value
+
+
+	A = $20;
+	[HL++] = A;
+	A = $2E;
+	[HL++] = A;
+	A = $00;
+	[HL++] = A;
+
+	A = E;
+	[HL++] = A;
+	A = $28;
+	[HL++] = A;
+	A = $2F;
+	[HL++] = A;
+	A ^= A;
+	[HL++] = A;
+
+	pop HL;
+
+	return;
+}
+
+subroutine VBLANK $0040
+{
+	HL++;
+	A = L;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	call Set_Sprite_VBLANK;
+
+	returni;
+}
+
+subroutine Main $0150
+{
+	enablei;
+
+	A ^= A;
+
+	[INTERRUPT_ENABLE_REGISTER] = A;
+
+	label Wait_For_Vblank;
+
+	A = [LCDY_REGISTER];
+	A < VBLANK_LY;
+	jump not_zero Wait_For_Vblank;	# In this case, we just want an infinite loop
+
+	A = $01;
+
+	[LCDC_REGISTER] = A;
+
+	call Load_Mem_Vblank_Procedure;
+
+	A = $93;
+
+	[LCDC_REGISTER] = A;
+
+	A = $08;
+
+	[LCD_STATUS_REGISTER] = A; # This will give Hblank interrupts
+
+	A = $03;
+
+	[INTERRUPT_ENABLE_REGISTER] = A;
+
+	label Main_Loop;
+
+	jump Main_Loop;
+}
+
+subroutine Main_Byte $0100
+{
+	jump $0150;
+}
+
+subroutine HBLANK $0048
+{
+ 	jump Hblank_Scroll_Routine;
+}

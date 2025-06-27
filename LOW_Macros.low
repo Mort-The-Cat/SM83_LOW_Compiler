@@ -25,6 +25,8 @@ macro LCD_STATUS_REGISTER $FF41;
 # bit 2 is set when LYC == LCDY
 # bits 1 and 0 determine the current PPU mode (0 if HBlank or currently disabled, 1 if VBlank)
 
+macro VBLANK_SCANLINE $0090;
+
 macro LCDC_REGISTER $FF40;
 	# bit 7 controls LCD and PPU			(MAY ONLY BE CHANGED DURING VBLANK!!)
 	# bit 6 window tile map 9800-9BFF or 9C00-9FFF

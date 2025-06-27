@@ -1,0 +1,86 @@
+macro DMA_OAM_BUFFER $C000;
+
+macro LCD_Interrupt_Routine_Flags $C0A0;
+# This byte is used to tell the CPU which 
+# LCD interrupt routine we should use
+
+macro VBlank_Interrupt_Routine_Flags $C0A1;
+# This byte is used to tell the CPU which
+# VBlank interrupt routine we should use
+
+macro Frame_Counter_Register $C0A2;
+
+macro OAM_Buffer_Counter $C0A3;
+macro OAM_Buffer_Counter_Start $C0A5;		# This indicates the start of the nonstatic OAM buffer.
+						# If there aren't any static objects onscreen, this can be set to zero
+
+
+macro Game_Object_Buffer $C100; # Where game objects (particles, enemies, etc) are stored
+        # 16-bit X position ($00 - H, $01 - L)
+        # 16-bit Y position ($02 - H, $03 - L)
+        # 8-bit state
+        #       - A table is used to get the object's controller function
+        # 8-bit object flags
+        #       bit 7 - Can be damaged/shot by player
+        #       bit 0 - Is an active object (This bit can be cleared and the object will be removed)
+        # 8-bit variable
+        #       - this can be whatever you want (i.e. a timer for deletion, a health bar, etc)
+        # 8-bit variable 2
+        #       - aeiou
+
+        # Each object is $08 bytes long
+
+        # $100 / $08 = $20 = max of 32 objects in 256 bytes
+
+        # Considering OAM is ~60 sprites max, I think this is reasonable
+        # If this is too little for an object, for whatever reason,
+        # you can just use the 16-bit variable 
+        # of the object as a pointer to more encapsulated memory.
+
+macro Game_Object_Count $C0FF;  # This is the number of game objects in the buffer
+
+
+macro Global_Animation_Counter $FFFE;		# This is used for things like the title screen
+
+# 16-bit game positions should be stored like so:
+#           S = sign / most significant bit
+#           T = tile
+#           P = pixel
+#           s = subpixel
+#                               STTTTTTT PPPsssss
+#                               FEDCBA98 76543210
+#                               Higher   Lower
+# This is such that:
+#   HL += HL;   # 2 cycles
+#   HL += HL;   # 2 cycles
+#   HL += HL;   # 2 cycles
+#   A = H;      # 1 cycle
+# Gives the result A = TTTTTPPP to the nearest pixel (which is important for graphics)
+# This number of subpixels is kinda overkill but I think it's the best method I have
+
+macro Camera_Scroll_X $FFFC; macro Camera_Scroll_X_Low $FFFD;    # FFFC = H, FFFD = L
+macro Camera_Scroll_Y $FFFA;                    # FFFA = H, FFFB = L
+macro Player_X $FFF8; macro Player_X_Low $FFF9; # FFF8 = H, FFF9 = L
+macro Player_Y $FFF6; macro Player_Y_Low $FFF7; # FFF6 = H, FFF7 = L
+macro Player_State $FFF5;      # FFF5 is 8 bits for player state
+macro Player_X_Vel $FFF4;      # SPPPssss
+macro Player_Y_Vel $FFF3;      # SPPPssss
+macro Player_Animation_Counter $FFF2;
+#               The player can't move faster than 7 pixels per frame with this current setup
+macro Player_Direction $FFF1;
+
+# Here's how you add an 8-bit velocity to a 16-bit position:
+#   word Position : HL;
+#   byte High : D;
+#   byte Lower : E;
+#   High = $00;            # 2 cycles
+#   Lower <<= 1;        # 2 cycles
+        # Sets carry flag to S
+#   jump not_carry Not_Negative;    # If there's no carry, we can skip this part, 2-3 cycles
+#   High--;                            # Sets D to $FF, 1 cycle
+#   label Not_Negative;
+#   HL += DE;                       # 2 cycles
+
+macro Level_Width $FFF0;        # This is the width of the current level 
+                                # (this allows the screen to lock at the sides of the level)
+
