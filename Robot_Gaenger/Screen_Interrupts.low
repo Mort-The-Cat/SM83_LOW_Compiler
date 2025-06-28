@@ -1,0 +1,96 @@
+subroutine Title_Screen_VBlank_Routine
+{
+    push DE;
+    push HL;    # Saving these values for later
+
+    A = $40;
+    [$FF00 + LCD_STATUS_REGISTER] = A;
+
+    A = $07;
+    [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+    HL = Frame_Counter_Register;
+    [HL]++;
+
+    A = [HL];
+    L = A;
+
+    A >>>= 1;
+    [$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+    A >>>= 1;
+    A >>>= 1;
+    [$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+    A = [OAM_Buffer_Counter_Start];
+    [OAM_Buffer_Counter] = A;
+
+    push BC;    # Just saving this for later
+
+    H = $90;
+    push HL;    # Y (H) and X (L) values
+
+    A ^= A;
+    push AF;    # Sprite flags and padding
+    DE = Robot_Steh;
+    call Place_Meta_Sprite_In_OAM;
+
+    call Clean_OAM_Buffer;
+    call DMA_Transfer;
+
+    pop BC;
+    pop HL;
+    pop DE;
+    pop AF;
+
+    returni;
+}
+
+subroutine Window_Hide_LCD
+{
+    A = $FF;
+    [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+    A ^= A;
+    [$FF00 + LCD_STATUS_REGISTER] = A;
+
+    # pop AF;
+    return;
+}
+
+subroutine Check_Window_Should_Hide_LCD_Interrupt_Routine
+{
+    A = [$FF00 + LCDY_REGISTER];
+    A < $47;
+    call zero Window_Hide_LCD;
+
+    pop AF;
+    returni;
+}
+
+subroutine LCD_Handler
+{
+    push AF;
+	A = [LCD_Interrupt_Routine_Flags];
+	A >><= 1;
+	jump carry Check_Window_Should_Hide_LCD_Interrupt_Routine;
+	# A.1;
+	#jump Title_Screen_LCD_Interrupt_Routine;
+
+    pop AF;
+
+    returni;
+}
+
+subroutine VBlank_Handler
+{
+    push AF;							# 0000
+	A = [VBlank_Interrupt_Routine_Flags];# 0001 - 0003
+	A >><= 1;								# 0004 - 0005
+	# jump 
+
+	jump carry Title_Screen_VBlank_Routine;	# 0006 - 0008
+
+	# jump Game_Loop_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
+
+	# returni;
+}

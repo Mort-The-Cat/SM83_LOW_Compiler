@@ -6,7 +6,7 @@ macro OAM_Buffer $C000;
 macro LCD_Interrupt_Routine_Flags $C0A0;
 # This byte is used to tell the CPU which 
 # LCD interrupt routine we should use
-    # 
+    # Title screen interrupt routine
 
 macro VBlank_Interrupt_Routine_Flags $C0A1;
 # This byte is used to tell the CPU which

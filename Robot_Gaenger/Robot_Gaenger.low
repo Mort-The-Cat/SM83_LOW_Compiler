@@ -50,12 +50,38 @@ file Robot_Gaenger/Enemy_Graphics_Data.td;
 
 #
 
-file Robot_Gaenger/RLE_Loader.low;
-
-#
-
 file Robot_Gaenger/Global_Variables.low;
 
+file Robot_Gaenger/RLE_Loader.low;
+
+file Robot_Gaenger/DMA_Handler.low;
+
+file Robot_Gaenger/Meta_Sprite_Handling.low;
+
+file Robot_Gaenger/Screen_Interrupts.low;
+
+subroutine Init_Title_Sprites
+{
+	HL = OAM_Buffer_Counter;
+	A ^= A;
+	[HL] = A;
+
+	BC = $1008;
+	push BC;
+	BC = Title_Text_Left_Pad_Graphics_Size;	# (Sprite flags $00) and count
+	push BC;
+	DE = Title_Text_Left_Pad;
+	call Place_Sprites_In_OAM;
+
+	HL = OAM_Buffer_Counter;
+	A = [HL++];
+
+	[HL] = A;
+
+	return;
+}
+
+#
 subroutine Init_Title_Screen
 {
     # Loads everything in
@@ -159,27 +185,65 @@ subroutine Init_Title_Screen
 
 	#
 
-	HL = VRAM_TILEM_0;	# Background layer
-	B = $02;
-	C = $03;
-	D = $20;
-	A ^= A;
-	label Local_Fill_Background_Tilemap;
-	    E = $10;
-	    A &= C;
-	    label Four_Byte_Pattern;
-	        [HL++] = A;
-	        A++;
-	        [HL++] = A;
-	        A++;
-	        A &= C;
-	        E--;
-	    jump not_zero Four_Byte_Pattern;
-	    A += B;
-	    D--;
-	jump not_zero Local_Fill_Background_Tilemap;
+	#HL = VRAM_TILEM_0;	# Background layer
+	#B = $02;
+	#C = $03;
+	#D = $20;
+	#A ^= A;
+	#label Local_Fill_Background_Tilemap;
+	#    E = $10;
+	#    A &= C;
+	#    label Four_Byte_Pattern;
+	#        [HL++] = A;
+	#        A++;
+	#        [HL++] = A;
+	#        A++;
+	#        A &= C;
+	#        E--;
+	#    jump not_zero Four_Byte_Pattern;
+	#    A += B;
+	#    D--;
+	#jump not_zero Local_Fill_Background_Tilemap;
 
-    
+	HL = VRAM_TILEM_0;	# Background layer
+	B = $04;			# Nice parallax brick background
+	DE = $0400;
+	call Memset;		# This will colour the background layer with the nice 1x1 brick background
+
+    call Init_DMA_HRAM_Function; # This loads the DMA function into HRAM (necessary to even use DMA)
+
+	A = $10;
+	[$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
+
+	call Init_Title_Sprites;
+
+	A = $01;
+	HL = LCD_Interrupt_Routine_Flags;
+	[HL++] = A;
+	[HL] = A;
+
+	C = BACKGROUND_PALETTE_REGISTER;
+	A = $E4;
+	[$FF00 + C] = A;
+	C++;
+	[$FF00 + C] = A;
+	C++;
+
+	A ^= $FF;
+	[$FF00 + C] = A;
+
+	#
+
+	A = $03;
+	[$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
+
+	A = $47;
+	[$FF00 + LYC_REGISTER] = A;
+
+	A = $E3;
+	[$FF00 + LCDC_REGISTER] = A;
+
+	enablei;
 
     label Test_Loop;
     jump Test_Loop;
@@ -190,3 +254,12 @@ subroutine Main_Byte $0100
     jump Init_Title_Screen;
 }
 
+subroutine LCD_Jump $0048
+{
+	jump LCD_Handler;
+}
+
+subroutine VBlank_Jump $0040
+{
+	jump VBlank_Handler;
+}
