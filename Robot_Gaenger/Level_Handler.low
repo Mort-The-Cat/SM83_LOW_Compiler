@@ -1,0 +1,363 @@
+data Fade_To_White_Palettes
+{
+    $E4
+    # 11 10 01 00
+
+    $A4
+    # 10 10 01 00
+
+    $94
+    # 10 01 01 00
+
+    $90
+    # 10 01 00 00
+
+    $50
+    # 01 01 00 00
+
+    $40
+    # 01 00 00 00
+
+    $00
+    # 00 00 00 00
+}
+
+subroutine Fade_To_White
+{
+    HL = Fade_To_White_Palettes;
+    E = $06;
+
+    label Fade_To_White_Loop;
+        label Wait_For_Draw;
+            A = [$FF00 + LCDY_REGISTER];
+            A &= A;
+        jump not_zero Wait_For_Draw;
+
+        label Wait_For_VBlank;
+            A = [$FF00 + LCDY_REGISTER];
+            A += $01;
+            A < VBLANK_SCANLINE;
+        jump carry Wait_For_VBlank;
+
+        A = [Frame_Counter_Register];
+        A &= $07;
+    jump not_zero Fade_To_White_Loop;
+    
+    HL++;
+    C = BACKGROUND_PALETTE_REGISTER;
+    A = [HL];
+    [$FF00 + C] = A;
+    C++;
+    [$FF00 + C] = A;
+
+    E--;
+    jump not_zero Fade_To_White_Loop;
+
+    return;
+}
+
+subroutine Load_New_Column_Of_Level_Data
+{
+	# SP + $00
+	# SP + $01 are the return pointers and can't be overwritten
+	
+	# SP + $02 column pixels/subpixels (not used) (Always zeroed) (Just padding)
+	# SP + $03 column tile position
+	
+	# Note that the high register is pushed BEFORE the low register.
+
+	# This will also find where in VRAM it needs to be loaded based on the camera X and the column X
+
+	# The distance in VRAM between top and bottom is $400 bytes long
+	# With a $20 byte jump between them.
+
+	HL = SP + $03;
+	A = [HL];	# Tile of column to load
+
+	A < $80;	# If we've wrapped around to the negatives (some obsurdly large unsigned X value)
+	jump not_carry End_Function;	# Then it's not a loadable column and we just end the function
+
+	E = A;
+	L = A;
+	H = $00;
+	HL += HL; # x2
+	HL += HL; # x4
+	HL += HL; # x8
+	HL += HL; # x16
+	HL += HL; # x32
+
+	A = $D0;
+	A += H;
+	B = A;
+
+	#B = $D0;
+
+	#HL += BC;
+	
+	# B = H;
+	C = L;
+	A = E;
+	A &= $1F;
+	L = A;
+	H = $98;	# Start of tilemap circular buffer
+
+	D = $20;	# Distance between tiles in memory
+	E = D;		# Number of tiles to copy
+
+	label Copy_Column_Loop;
+	A = [BC];
+	BC++;
+	[HL] = A;
+
+	A = L;
+	A += D;
+	jump not_carry No_Carry;
+	H++;
+	label No_Carry;
+	L = A;
+
+	E--;
+	jump not_zero Copy_Column_Loop;
+
+	label End_Function;
+
+	pop HL;
+	SP += $02;
+
+	jump HL;
+}
+
+subroutine Scroll_Routine
+{
+	# Now, we want to update the ends of the circular buffer
+	C = $17;
+	A = [$FF00 + Player_X_Vel];
+	A.7;						# Checks sign bit of the player X velocity
+	jump zero Scroll_Right;		# If the number is positive (right)
+	C = $FE;
+	label Scroll_Right;			# Keep using the $18 value for scroll routine
+
+	A = [$FF00 + Camera_Scroll_X];
+	A += C;			# Loads tiles at position 24 OR -4
+	B = A;
+	push BC;
+	call Load_New_Column_Of_Level_Data;
+
+	# We've done what we need! Return from function
+
+	return;
+}
+
+subroutine Update_Player_Scroll
+{
+	# Compare left/right side of level
+	# If $0A00 is greater than Player X,
+	# Use the value $0A00
+
+	# If HIGH(player X) is greater than the value (Level_Width) + $F600,
+	# use value (Level_Width) + $F600
+
+	A = [$FF00 + Player_X];
+	A < $0A;
+	C = Camera_Scroll_X;
+	jump not_carry Clamp_Left_Not_Necessary;
+	A = $00;
+	[$FF00 + C] = A;	# Sets camera scroll to min value
+	A ^= A;
+	C++;
+	[$FF00 + C] = A;	# Clears sub/pixels
+	jump Finished_Clamping;	
+		# Since we clamped left,
+		# We know we don't need to clamp right
+	label Clamp_Left_Not_Necessary;
+	L = A;
+	A = [$FF00 + Level_Width];
+	A < L;						# Level_Width < Player_X
+	jump not_carry Clamp_Right_Not_Necessary;
+	A -= $09;
+	[$FF00 + C] = A;
+	A ^= A;
+	C++;
+	[$FF00 + C] = A;
+	jump Finished_Clamping;
+	label Clamp_Right_Not_Necessary;
+
+	C = Camera_Scroll_X;
+	A = L;
+	A -= $0A;				# Subtract 10 tiles (half the screen)
+	[$FF00 + C] = A;
+	C++;
+	A = [$FF00 + Player_X_Low];
+	[$FF00 + C] = A;
+	# This sets the camera scroll registers accordingly
+
+	label Finished_Clamping;
+
+	C = Camera_Scroll_X;
+
+	A = [$FF00 + C];	
+	H = A;				# Puts tile in H
+	C++;
+	A = [$FF00 + C];
+	L = A;				# Puts sub/pixels in L
+
+	C = H;				# Simply saves for later
+
+	HL += HL;			# x2
+	HL += HL;			# x4
+	HL += HL;			# x8
+
+	# H now has TTTTTPPP (correct format)
+
+	A = H;
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;	# Sets horizontal scroll register!
+
+	# Afterwards, we want to adjust the Y scroll register
+
+	#
+
+	A = [$FF00 + Player_Y];
+	A < $09;
+	C = Camera_Scroll_Y;
+	jump not_carry Clamp_Top_Not_Necessary;
+	A = $00;
+	[$FF00 + C] = A;
+	C++;
+	A ^= A;
+	[$FF00 + C] = A;
+	jump Finished_Vertical_Clamping;
+
+	label Clamp_Top_Not_Necessary;
+	A < $17;
+	jump carry Clamp_Bottom_Not_Necessary;
+	A = $0E;
+	[$FF00 + C] = A;
+	C++;
+	A ^= A;
+	[$FF00 + C] = A;
+	jump Finished_Vertical_Clamping;
+
+	label Clamp_Bottom_Not_Necessary;
+	A -= $09;
+	[$FF00 + C] = A;
+	C++;
+	A = [$FF00 + Player_Y_Low];
+	[$FF00 + C] = A;
+
+	label Finished_Vertical_Clamping;
+
+	A = [$FF00 + C];
+	L = A;
+	C--;
+	A = [$FF00 + C];
+	H = A;
+
+	HL += HL;
+	HL += HL;
+	HL += HL;
+
+	A = H;
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;		# Sets background scroll Y register!
+
+	return;
+}
+
+subroutine Load_First_Level_Data
+{
+	A ^= A;
+	[$FF00 + Camera_Scroll_X] = A;	# Resets camera scroll X
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+
+	A = 112;
+
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+	BC = $0020;
+
+	label Copy_Column_Loop;
+	push BC;	# Saves for later
+	push BC;	# Pushes (tile) and (padding)
+	call Load_New_Column_Of_Level_Data;
+	pop BC;		# Gets BC back
+	B++;		# Next tile
+	C--;		# Decrement counter
+	jump not_zero Copy_Column_Loop;
+
+	return;
+}
+
+subroutine Game_Loop
+{
+	label Loop;
+		call Update_Player_Scroll;
+		call Handle_Player_Physics;
+		call Clean_OAM_Buffer;
+
+		label Wait_For_VBlank;
+			A = [$FF00 + LCDY_REGISTER];
+			A < VBLANK_SCANLINE;
+		jump carry Wait_For_VBlank;
+
+
+	jump Loop;
+}
+
+subroutine Init_First_Level
+{
+    A = $01;
+    [$FF00 + INTERRUPT_ENABLE_REGISTER] = A;    # Only allow VBlank interrupts for now
+
+    call Fade_To_White;
+
+    label Wait_For_VBlank;
+        A = [$FF00 + LCDY_REGISTER];
+        A < VBLANK_SCANLINE;
+    jump not_zero Wait_For_VBlank;
+
+    A ^= A;
+    [$FF00 + LCDC_REGISTER] = A;        # Turns off the PPU, allows loading!!
+
+	C = Player_Y;
+	A = $18;			# Y(tiles) = 24;
+	[$FF00 + C] = A;
+	A ^= A;				# Y(sub/pixels) = 0
+	C++;
+	[$FF00 + C] = A;
+	A = $0A;			# X(tiles) = 10
+	C++;
+	[$FF00 + C] = A;
+	A ^= A;				# X(sub/pixels) = 0
+	C++;
+	[$FF00 + C] = A;
+
+	A = $7F;	# 64 tiles
+	A += $F6;	# - 10 tiles (to account for screen width/2)
+	[$FF00 + Level_Width] = A;	# Sets offset level width
+
+    BC = Level_WRAM_Data;
+    HL = Intro_Level_Data;
+    call Run_Length_Encoding_Load;  # This load level data into WRAM
+
+    call Load_First_Level_Data;     # This just updates the VRAM to where we want
+
+	A = $00;	# Right 0 player state
+	[$FF00 + Player_State] = A;
+	[$FF00 + Player_Direction] = A;
+	A = $02;
+	[$FF00 + Player_Animation_Counter] = A;
+
+	A = $E4;	# This is the background palette we want
+	[$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+	[$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+
+	HL = VBlank_Interrupt_Routine_Flags;
+	[HL] = $02;
+
+	A = $E3;
+	[$FF00 + LCDC_REGISTER] = A;
+
+	jump Game_Loop;
+
+    #label Cool_Loop;
+    #jump Cool_Loop;
+}

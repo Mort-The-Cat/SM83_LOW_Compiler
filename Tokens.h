@@ -37,6 +37,7 @@ enum Token_Enum
 	T_IF,			// if
 	T_SUBROUTINE,	// subroutine
 	T_FOR,			// for
+	T_HIGH,			// This says that we only want the high byte of a 16-bit word
 	T_WHILE,		// while
 	T_RETURNI,		// returni
 	T_RETURN,		// return
@@ -139,6 +140,7 @@ const Token Compiler_Tokens[] =
 	[T_PUSH] = { T_PUSH, "push"},
 	[T_POP] = { T_POP, "pop"},
 	[T_SUBROUTINE] = { T_SUBROUTINE, "subroutine"},
+	[T_HIGH] = { T_HIGH, "high"},
 	[T_DATA] = { T_DATA, "data"},
 	[T_FOR] = { T_FOR, "for"},
 	[T_WHILE] = {T_WHILE, "while"},

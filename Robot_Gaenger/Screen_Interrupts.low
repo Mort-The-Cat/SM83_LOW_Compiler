@@ -3,9 +3,6 @@ subroutine Title_Screen_VBlank_Routine
     push DE;
     push HL;    # Saving these values for later
 
-    A = $40;
-    [$FF00 + LCD_STATUS_REGISTER] = A;
-
     A = $07;
     [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
 
@@ -45,6 +42,27 @@ subroutine Title_Screen_VBlank_Routine
     returni;
 }
 
+subroutine Game_Loop_VBlank_Routine
+{
+	push DE;
+	push BC;
+
+	A = [OAM_Buffer_Counter_Start];
+	[OAM_Buffer_Counter] = A;
+
+	call DMA_Transfer;
+
+	call Scroll_Routine;
+
+	# Here, we'll want to run the scroll routines and such
+
+	pop BC;
+	pop DE;
+	pop AF;
+
+	returni;
+}
+
 subroutine Window_Hide_LCD
 {
     A = $FF;
@@ -57,13 +75,63 @@ subroutine Window_Hide_LCD
     return;
 }
 
-subroutine Check_Window_Should_Hide_LCD_Interrupt_Routine
+#subroutine Check_Window_Should_Hide_LCD_Interrupt_Routine
+#{
+#    A = [$FF00 + LCDY_REGISTER];
+#    A < $47;
+#    call zero Window_Hide_LCD;
+
+#    pop AF;
+#    returni;
+#}
+
+subroutine Title_Screen_Transition_LCD_Interrupt_Routine
+{
+    push BC;
+    A = [$FF00 + WINDOW_SCROLL_Y_REGISTER];
+    B = A;
+    A = [$FF00 + LCDY_REGISTER];
+    A -= $37;
+    A < B;
+    call zero Window_Hide_LCD;
+    pop BC;
+    pop AF;
+
+    returni;
+}
+
+subroutine Title_Screen_Wave_LCD_Interrupt_Routine
 {
     A = [$FF00 + LCDY_REGISTER];
     A < $47;
-    call zero Window_Hide_LCD;
+    jump not_zero Skip_Window_Hiding_Logic;
+        call Window_Hide_LCD;
 
+        pop AF;
+        returni;
+
+    label Skip_Window_Hiding_Logic;
+
+    # If we don't want to hide window, do wavy screen logic!
+    A += A;
+    push HL;
+    HL = Frame_Counter_Register;
+    A += [HL];
+    swap A;
+    A <<>= 1;
+    A &= $0F;
+    jump not_zero Local_Conditional_Add;
+        A++;
+    label Local_Conditional_Add;
+
+    call Triangle_Wave;
+
+    A += $02;
+    [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+    pop HL;
     pop AF;
+
     returni;
 }
 
@@ -72,9 +140,15 @@ subroutine LCD_Handler
     push AF;
 	A = [LCD_Interrupt_Routine_Flags];
 	A >><= 1;
-	jump carry Check_Window_Should_Hide_LCD_Interrupt_Routine;
+	# jump carry Check_Window_Should_Hide_LCD_Interrupt_Routine;
 	# A.1;
 	#jump Title_Screen_LCD_Interrupt_Routine;
+
+    jump carry Title_Screen_Wave_LCD_Interrupt_Routine;
+
+    A >><= 1;
+
+    jump carry Title_Screen_Transition_LCD_Interrupt_Routine;
 
     pop AF;
 
@@ -90,7 +164,7 @@ subroutine VBlank_Handler
 
 	jump carry Title_Screen_VBlank_Routine;	# 0006 - 0008
 
-	# jump Game_Loop_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
+	jump Game_Loop_VBlank_Routine;	# This is a placeholder, we'll use a different function once we're on a different screen.
 
 	# returni;
 }

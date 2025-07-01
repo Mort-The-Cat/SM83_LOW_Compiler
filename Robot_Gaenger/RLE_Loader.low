@@ -26,10 +26,10 @@ subroutine Run_Length_Encoding_Load
 		A &= $7F;
 		E = A;
 		label Non_RLE_Loop;
-		A = [HL++];
-		[BC] = A;
-		BC++;
-		E--;
+			A = [HL++];
+			[BC] = A;
+			BC++;
+			E--;
 		jump not_zero Non_RLE_Loop;
 	jump RLE_Loop;
 }

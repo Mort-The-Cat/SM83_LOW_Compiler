@@ -328,6 +328,15 @@ void Generate_Byte_Code(const Vector* Tokens)
 			Flags = T[0].Token;													// Is function/data flag
 			break;
 
+		case T_HIGH:
+			if (Flags == T_DATA)
+			{
+				ROM[ROM_Index++] = Get_Value_From_String((unsigned char*)T[2].Representation) >> 8u;
+				Token_Index += sizeof(Token) * 4;	// high, (, number, )
+			}
+
+			break;
+
 		case T_HEX_LITERAL:
 		case T_NUMBER:
 			if (Flags == T_DATA)

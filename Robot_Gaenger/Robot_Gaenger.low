@@ -44,6 +44,10 @@ macro Intro_Level_Data_Size $1000;
 data Intro_Level_Data
 file Robot_Gaenger/Long_Level_Data_RLE.td;
 
+macro Tile_Flags_Data_Size $0100;
+data Tile_Flags_Data
+file Robot_Gaenger/Tile_Flags_Data.td;
+
 macro Enemy_Graphics_Size $0190;
 data Enemy_Graphics_Data
 file Robot_Gaenger/Enemy_Graphics_Data.td;
@@ -57,6 +61,10 @@ file Robot_Gaenger/RLE_Loader.low;
 file Robot_Gaenger/DMA_Handler.low;
 
 file Robot_Gaenger/Meta_Sprite_Handling.low;
+
+file Robot_Gaenger/Player_State_Handler.low;
+
+file Robot_Gaenger/Level_Handler.low;
 
 file Robot_Gaenger/Screen_Interrupts.low;
 
@@ -79,6 +87,59 @@ subroutine Init_Title_Sprites
 	[HL] = A;
 
 	return;
+}
+
+subroutine Title_Screen_Loop
+{
+	label Local_Loop;
+		label Wait_For_VBlank_Title;
+			A = [$FF00 + LCDY_REGISTER];
+			A -= $07;
+			A < VBLANK_SCANLINE;
+		jump not_zero Wait_For_VBlank_Title;
+		
+    	A = $08;
+    	[$FF00 + LCD_STATUS_REGISTER] = A;
+
+		C = CONTROLLER_REGISTER;
+		A = CONTROLLER_SSBA_FLAG;
+		[$FF00 + C] = A;
+		A = [$FF00 + C];
+		A = [$FF00 + C];
+		A = [$FF00 + C];
+		A = [$FF00 + C];
+		A = [$FF00 + C];
+
+		A.CONTROLLER_BUTTON_START_BIT;
+
+	jump not_zero Local_Loop;	# 'zero' means pressed
+
+	# Start was pressed! Begin title screen *transition* loop
+
+	HL = LCD_Interrupt_Routine_Flags;	# Changes the LCD STAT interrupt routine
+	[HL] = $02;
+
+	HL = OAM_Buffer_Counter_Start;
+	[HL] = $00;
+
+	label Transition_Loop;
+
+		HL = WINDOW_SCROLL_Y_REGISTER;
+		[HL]++;
+			A = VBLANK_SCANLINE;
+			A < [HL];
+		jump zero Init_First_Level;		# If the window is offscreen, begin fade to white
+
+		label Wait_For_VBlank;
+			A = [$FF00 + LCDY_REGISTER];
+			A -= $07;
+			A < VBLANK_SCANLINE;
+		jump not_zero Wait_For_VBlank;
+
+		A = $08;
+		[$FF00 + LCD_STATUS_REGISTER] = A;
+
+	jump Transition_Loop;
 }
 
 #
@@ -245,8 +306,7 @@ subroutine Init_Title_Screen
 
 	enablei;
 
-    label Test_Loop;
-    jump Test_Loop;
+    jump Title_Screen_Loop;
 }
 
 subroutine Main_Byte $0100
