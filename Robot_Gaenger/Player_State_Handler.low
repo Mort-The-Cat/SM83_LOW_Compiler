@@ -58,37 +58,6 @@ subroutine Handle_Player_Inputs
     return;
 }
 
-
-subroutine Handle_State_Table_Function
-{
-
-    # Gets HL from Player State Table
-    # Calls that function
-
-    #HL = Table;
-    #A = [$FF00 + Player_State];
-    push BC;
-
-    A += A;
-    C = A;
-    B = $00;
-    HL += BC;
-    #A += L;
-    #L = A;
-
-    #L = A;
-
-    A = [HL++];
-    L = [HL];
-    H = A;
-
-    pop BC;
-
-    jump HL;
-
-    # return;
-}
-
 data Player_Turnaround_Graphics
 {
     # top-left, top-right
@@ -821,7 +790,7 @@ subroutine Handle_Player_Physics
     A = [$FF00 + C];
     E = A;
 
-    HL += DE;       # Player_X - Camera_Scroll_X
+    HL += DE;       # Player_Y - Camera_Scroll_Y
 
     HL += HL;
     HL += HL;

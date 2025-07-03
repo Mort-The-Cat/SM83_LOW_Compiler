@@ -54,6 +54,11 @@ subroutine Game_Loop_VBlank_Routine
 
 	call Scroll_Routine;
 
+    BC = Frame_Counter_Register;
+    A = [BC];
+    A++;
+    [BC] = A;       # This increments the frame counter register
+
 	# Here, we'll want to run the scroll routines and such
 
 	pop BC;

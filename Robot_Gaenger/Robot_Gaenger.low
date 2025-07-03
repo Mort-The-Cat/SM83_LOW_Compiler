@@ -62,6 +62,8 @@ file Robot_Gaenger/DMA_Handler.low;
 
 file Robot_Gaenger/Meta_Sprite_Handling.low;
 
+file Robot_Gaenger/Actor_Handler.low;
+
 file Robot_Gaenger/Player_State_Handler.low;
 
 file Robot_Gaenger/Level_Handler.low;

@@ -1,0 +1,226 @@
+subroutine Handle_State_Table_Function
+{
+
+    # Gets HL from Player State Table
+    # Calls that function
+
+    #HL = Table;
+    #A = [$FF00 + Player_State];
+    push BC;
+
+    A += A;
+    C = A;
+    B = $00;
+    HL += BC;
+    #A += L;
+    #L = A;
+
+    #L = A;
+
+    A = [HL++];
+    L = [HL];
+    H = A;
+
+    pop BC;
+
+    jump HL;
+
+    # return;
+}
+
+data Test_Sentry_Graphics
+{
+    $2D $2E # Test right-facing
+    $33 $34
+
+    $2F $30
+    $35 $34
+
+    $31 $32
+    $36 $34
+}
+
+subroutine Test_Standstill_Object_Function
+{
+    # At this point, we've pushed screen coords.
+    # E is equal to object_index + $04
+    # Run code!!!
+
+    # Iterate counter
+
+    push BC;
+
+    E++;
+    E++;
+    HL = Frame_Counter_Register;
+    A = [HL];
+    A &= $0F;
+    A = [DE];
+    jump not_zero Conditional_Add;
+        A++;
+    label Conditional_Add;
+
+    A < $03;
+    jump not_zero Conditional_Loop;
+        A ^= A;
+    label Conditional_Loop;
+
+    [DE] = A;
+    A += A;
+    A += A; # x4
+
+    HL = Test_Sentry_Graphics;
+    E = A;
+    D = $00;
+    HL += DE;
+
+    D = H;
+    E = L;
+
+    H = $02;
+    push HL;    # Push sprite flags
+
+    call Place_Meta_Sprite_In_OAM;
+
+    return;
+
+    # Then, push rest of graphics information
+}
+
+data Game_Object_Function_Table
+{
+    high(Test_Standstill_Object_Function) 
+    Test_Standstill_Object_Function
+}
+
+# Need a function that will iterate through game objects
+
+# Push screen coords
+
+# Run actor handler
+
+# Repeat
+
+# $2690 = X
+# $1800 = Y
+
+data Test_Actor_Data
+{
+    $18 $00
+    $26 $90
+    $00 # Index
+    $00 # Flags
+    $00 # Memory
+    $00 # Memory
+}
+
+subroutine Init_Test_Actor
+{
+    HL = Test_Actor_Data;
+    BC = Actor_Buffer;
+    DE = $08;
+    call Memcpy;
+
+    return;
+}
+
+subroutine Push_Sprite_Screen_Coords
+{
+    byte Offset : E;
+
+    C = Camera_Scroll_Y;
+    A = [$FF00 + C];
+    A ~= A;
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    D = Actor_Buffer_High;
+    A = [DE];
+    B = A;
+    E++;
+    A = [DE];
+    C = A;
+
+    HL += BC;   # Actor Y - Camera Y
+
+    HL += HL;
+    HL += HL;
+    HL += HL;   # H = TTTTTPPP (screen space format)
+
+    A = $10;
+    A += H;     # $10 + Y
+    push AF;
+
+    C = Camera_Scroll_X;
+    A = [$FF00 + C];
+    A ~= A;
+    H = A;
+    C++;
+    A = [$FF00 + C];
+    A ~= A;
+    L = A;
+    HL++;
+
+    E++;
+    A = [DE];
+    B = A;
+    E++;
+    A = [DE];
+    C = A;
+
+    HL += BC;   # Object X - Camera X
+
+    HL += HL;
+    HL += HL;
+    HL += HL;   # H = TTTTTPPP
+
+    A = $08;
+    A += H;     # A = OAM x value
+
+    pop BC;     # B = OAM y value
+    # C = B;
+    pop HL;     # function return pointer
+    pop DE;     # retrieves previous DE value
+
+    push DE;
+
+    C = A;
+    push BC;    # Pushes Y/X screen coords
+
+    jump HL;
+}
+
+subroutine Handle_All_Game_Objects
+{
+    DE = Actor_Buffer;
+
+    label Iterate_Game_Objects;
+
+    push DE;    # Saves for later
+    call Push_Sprite_Screen_Coords;
+    E++;
+    E++;
+    E++;
+    E++;
+
+    HL = Game_Object_Function_Table;
+    A = [DE];   # Index in table
+    pop BC;
+    call Handle_State_Table_Function;
+
+    pop DE;
+    A = $08;
+    A += E;
+    E = A;
+    A < $08;
+    jump not_zero Iterate_Game_Objects;
+
+    return;
+}
+
+# Another function that will clean the actor array
+

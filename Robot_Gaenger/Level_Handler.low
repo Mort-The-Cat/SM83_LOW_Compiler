@@ -100,9 +100,18 @@ subroutine Load_New_Column_Of_Level_Data
 	A &= $1F;
 	L = A;
 	H = $98;	# Start of tilemap circular buffer
+	A = [Frame_Counter_Register];
+	A.0;
+	jump zero Odd_Frame;
+		H++;
+		H++;
+		A = $10;
+		A += C;
+		C = A;
+	label Odd_Frame;
 
 	D = $20;	# Distance between tiles in memory
-	E = D;		# Number of tiles to copy
+	E = $10;	# Number of tiles to copy
 
 	label Copy_Column_Loop;
 	A = [BC];
@@ -157,6 +166,27 @@ subroutine Update_Player_Scroll
 	# If HIGH(player X) is greater than the value (Level_Width) + $F600,
 	# use value (Level_Width) + $F600
 
+	C = Camera_Scroll_X;
+
+	A = [$FF00 + C];	
+	H = A;				# Puts tile in H
+	C++;
+	A = [$FF00 + C];
+	L = A;				# Puts sub/pixels in L
+
+	C = H;				# Simply saves for later
+
+	HL += HL;			# x2
+	HL += HL;			# x4
+	HL += HL;			# x8
+
+	# H now has TTTTTPPP (correct format)
+
+	A = H;
+	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;	# Sets horizontal scroll register!
+
+	#
+
 	A = [$FF00 + Player_X];
 	A < $0A;
 	C = Camera_Scroll_X;
@@ -193,32 +223,29 @@ subroutine Update_Player_Scroll
 
 	label Finished_Clamping;
 
-	C = Camera_Scroll_X;
+	# Afterwards, we want to adjust the Y scroll register
 
-	A = [$FF00 + C];	
-	H = A;				# Puts tile in H
-	C++;
+	#
+
+	C = Camera_Scroll_Y_Low;
 	A = [$FF00 + C];
-	L = A;				# Puts sub/pixels in L
+	L = A;
+	C--;
+	A = [$FF00 + C];
+	H = A;
 
-	C = H;				# Simply saves for later
-
-	HL += HL;			# x2
-	HL += HL;			# x4
-	HL += HL;			# x8
-
-	# H now has TTTTTPPP (correct format)
+	HL += HL;
+	HL += HL;
+	HL += HL;
 
 	A = H;
-	[$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;	# Sets horizontal scroll register!
+	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;		# Sets background scroll Y register!
 
-	# Afterwards, we want to adjust the Y scroll register
 
 	#
 
 	A = [$FF00 + Player_Y];
 	A < $09;
-	C = Camera_Scroll_Y;
 	jump not_carry Clamp_Top_Not_Necessary;
 	A = $00;
 	[$FF00 + C] = A;
@@ -246,19 +273,6 @@ subroutine Update_Player_Scroll
 
 	label Finished_Vertical_Clamping;
 
-	A = [$FF00 + C];
-	L = A;
-	C--;
-	A = [$FF00 + C];
-	H = A;
-
-	HL += HL;
-	HL += HL;
-	HL += HL;
-
-	A = H;
-	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;		# Sets background scroll Y register!
-
 	return;
 }
 
@@ -277,6 +291,18 @@ subroutine Load_First_Level_Data
 	label Copy_Column_Loop;
 	push BC;	# Saves for later
 	push BC;	# Pushes (tile) and (padding)
+	call Load_New_Column_Of_Level_Data;			
+	# To use less of the valuable VBlank time, each column load actually only loads half the column
+	# It loads the other half of the column on the next frame
+	# As a result, we just add this extra logic in the level initialisation
+	# that tells the game to load the opposite half of the column
+	pop BC;
+
+	push BC;
+	push BC;
+	HL = Frame_Counter_Register;
+	[HL]++;
+
 	call Load_New_Column_Of_Level_Data;
 	pop BC;		# Gets BC back
 	B++;		# Next tile
@@ -290,6 +316,7 @@ subroutine Game_Loop
 {
 	label Loop;
 		call Update_Player_Scroll;
+		call Handle_All_Game_Objects;
 		call Handle_Player_Physics;
 		call Clean_OAM_Buffer;
 
@@ -339,6 +366,7 @@ subroutine Init_First_Level
     call Run_Length_Encoding_Load;  # This load level data into WRAM
 
     call Load_First_Level_Data;     # This just updates the VRAM to where we want
+	call Init_Test_Actor;
 
 	A = $00;	# Right 0 player state
 	[$FF00 + Player_State] = A;
