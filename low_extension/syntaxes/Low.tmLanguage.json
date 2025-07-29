@@ -68,8 +68,12 @@
                     "match": "\\$[\\dA-F]+\\b"
                 },
                 {
-                    "name": "constant.numeric",
-                    "match": "\\b\\d+\\b"
+                  "name": "constant.numeric",
+                  "match": "\\b\\d+\\b"
+                },
+                {
+                  "name": "constant.numeric",
+                  "match":  "\\%[0-1]+\\b"
                 }
             ]
         },

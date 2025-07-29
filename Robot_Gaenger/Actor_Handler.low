@@ -137,6 +137,7 @@ subroutine Push_Sprite_Screen_Coords
     A ~= A;
     L = A;
     HL++;
+    #HL++;
 
     D = Actor_Buffer_High;
     A = [DE];
@@ -146,6 +147,9 @@ subroutine Push_Sprite_Screen_Coords
     C = A;
 
     HL += BC;   # Actor Y - Camera Y
+
+    BC = $001F;
+    HL += BC;
 
     HL += HL;
     HL += HL;
@@ -164,6 +168,7 @@ subroutine Push_Sprite_Screen_Coords
     A ~= A;
     L = A;
     HL++;
+    #HL++;
 
     E++;
     A = [DE];
@@ -173,6 +178,8 @@ subroutine Push_Sprite_Screen_Coords
     C = A;
 
     HL += BC;   # Object X - Camera X
+    BC = $001F;
+    HL += BC;
 
     HL += HL;
     HL += HL;

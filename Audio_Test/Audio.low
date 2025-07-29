@@ -1,0 +1,51 @@
+file Logo_Data.td;
+
+file LOW_Macros.low;
+
+subroutine Main_Loop $0200
+{
+    HL = $FF20;
+    A ^= A;
+    [HL++] = A;
+    A = $80;
+    [HL++] = A;
+    A = $70;
+    [HL++] = A;
+    A = $C0;
+    [HL++] = A;
+
+
+    label Audio_Loop;
+    jump Audio_Loop;
+}
+
+file Audio_Test/Song_Interpreter.low;
+file Audio_Test/Test_Song.low;
+
+subroutine Main $0150
+{
+    A ^= A;
+    [$FF00 + INTERRUPT_ENABLE_REGISTER] = A; # This disables all interrupts
+
+    label Wait_For_VBlank;
+    A = [$FF00 + LCDY_REGISTER];
+    A < VBLANK_LY;
+    jump not_zero Wait_For_VBlank;
+
+    [$FF00 + LCDC_REGISTER] = A;    # Turns off the LCD
+
+    A = $80;
+    [$FF00 + $FF26] = A;    # Turns on the APU
+
+    A = $FF;
+    [$FF00 + $FF25] = A;
+
+    jump Main_Loop;
+}
+
+
+
+subroutine Program_Entry $0100
+{
+    jump Main;
+}

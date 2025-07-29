@@ -241,7 +241,6 @@ subroutine Update_Player_Scroll
 	A = H;
 	[$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;		# Sets background scroll Y register!
 
-
 	#
 
 	A = [$FF00 + Player_Y];
@@ -324,8 +323,6 @@ subroutine Game_Loop
 			A = [$FF00 + LCDY_REGISTER];
 			A < VBLANK_SCANLINE;
 		jump carry Wait_For_VBlank;
-
-
 	jump Loop;
 }
 

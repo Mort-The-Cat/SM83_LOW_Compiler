@@ -1,0 +1,38 @@
+data Test_Phrase
+{
+    #TEVLSFFF
+    %10101000
+        %00010000 # Frequency
+#        VVVVsPPP
+        %01000100 # Volume/envelope
+        %00000000 # Sweep
+
+    # That's the first note! Only took 4 bytes
+
+    %00000000 # Blank note
+
+    %00000000 # Blank note
+    
+    #TEVLSFFF
+    %10000000   # We don't need to enter new volume values or whatever, just freq
+        %01000000
+
+    %00000000 # Blank note
+
+    %00000000 # Blank note
+
+    %10000001 # Higher note
+        %00000000
+
+    %10000000
+        %01000000
+
+    # This is all!
+}
+
+data Test_Song
+{
+    $40 # Frames per beat (64 frames)
+    high(Test_Phrase) Test_Phrase
+    $00 $00 # End of song
+}

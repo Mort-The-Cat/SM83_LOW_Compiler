@@ -50,6 +50,7 @@ enum Token_Enum
 
 	T_NUMBER,
 	T_HEX_LITERAL,
+	T_BINARY_LITERAL,
 	T_STRING_LITERAL,
 
 	T_SEMI,
@@ -396,6 +397,34 @@ unsigned char Token_Check_Operator(Vector* Target_Tokens, const Vector* File_Con
 	}
 	
 	return 0;
+}
+
+char* Get_Hex_String_From_Word(unsigned int Value); // At most 16 bits
+
+unsigned char Token_Check_Binary_Literal(Vector* Target_Tokens, const Vector* File_Contents, unsigned long Index)
+{
+	Token Literal;
+	unsigned char Length = 1u;
+	unsigned int Value = 0u;
+
+	if (File_Contents->Data[Index] == '%') // This is the prefix for a binary literal
+	{
+		while (Is_Alpha_Numeric(File_Contents->Data[Index + Length]) == ALPHANUMERIC_NUMBER)
+		{
+			Value <<= 1u;
+			Value += File_Contents->Data[Index + Length] - '0';
+			Length++;
+		}
+
+		Literal.Token = T_HEX_LITERAL;
+		Literal.Representation = Get_Hex_String_From_Word(Value);
+
+		Vector_Push_Memory(Target_Tokens, &Literal, sizeof(Token));
+
+		return Length;
+	}
+
+	return 0u;
 }
 
 unsigned char Token_Check_Hex_Literal(Vector* Target_Tokens, const Vector* File_Contents, unsigned long Index)
@@ -766,6 +795,12 @@ unsigned char Tokenise(Vector* Target_Tokens, const char* File_Directory)
 		}
 
 		if (Delta = Token_Check_Hex_Literal(Target_Tokens, &File_Contents, Index))
+		{
+			Index += Delta;
+			continue;
+		}
+
+		if (Delta = Token_Check_Binary_Literal(Target_Tokens, &File_Contents, Index))
 		{
 			Index += Delta;
 			continue;

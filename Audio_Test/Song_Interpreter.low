@@ -1,0 +1,76 @@
+# How sound/music handles are stored:
+#   word -  Song file pointer HL 
+#   byte - Frame counter (1-256)
+#   byte - Note offset (this is the memory offset of the current note)
+#   byte - Current phrase offset
+
+
+# How sound/music files shall be stored:
+
+# Frames per beat (how many frames need to pass before reaching next beat)
+# phrase pointer:
+# if $0000, end of file! Very simple
+
+#
+
+# Each phrase shall be encoded like so:
+
+# Note wrapper:         %TEVL SFFF  (separated into nibbles for clarity)
+#   T - note trigger? (If bit cleared, no additional information provided)
+#   E - enable length timer? 
+#   V - (software flag) This lets us know if we're providing new volume/envelope info
+#   L - (software flag) This lets us know if we're providing new length information
+#   S - (software flag) This lets us know if we're providing new sweep values for channel 1
+#   F - most-significant bits of the channel frequency value
+
+# Note frequency:       %FFFF FFFF
+#   F - least-significant bits of channel frequency value
+
+# Note volume/envelope: %VVVV sPPP
+#   V - initial volume of note
+#   s - envelope add mode (set = increase vol, clear = decrease vol)
+#   P - time between envelope volume increments
+#           (How many (1/64) seconds per iteration)
+#           NOTE: A period of 0 disables envelope
+
+# Note duty + length:   %DDLL LLLL
+#   D - duty of note
+#       (00 = 12.5%)
+#       (01 = 25%)
+#       (10 = 50%)
+#       (11 = 75%)
+#   L - is used to encode length of note, where:
+#           length = 64 - L
+#           measured in (1/256) seconds
+
+# IMPORTANT: DAC Waveform lengths are encoded differently
+
+# DAC duty + length:    %LLLL LLLL
+#   L - is used to encode length of note, where:
+#           length = 256 - L
+#           measured in (1/256) seconds
+
+# Channel one sweep:    %-PPP sMMM
+#   P - time between sweep iteration
+#           (measured in 1/128 seconds)
+#           (a period of 0 deactivates the sweep)
+#   s - sign of sweep (0 = increase, 1 = decrease)
+#   M - magnitude of sweep
+
+# Each phrase lasts 16 notes
+
+subroutine Channel_1_Sound_Handle_Function
+{
+    word Sound_Handle : HL;
+
+    # we want to get frames/beat and compare to the current frame counter
+
+    # If it exceeds frame counter, begin note playing code
+
+    # Get phrase pointer
+    # Get note offset
+    
+    # Set new values and then trigger channel
+
+    # Once note is played, iterate to next note
+}

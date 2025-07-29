@@ -75,7 +75,7 @@ void Handle_Identifiers(Vector* Target_Tokens, unsigned int Index, const Vector*
 
 char* Get_Hex_String_From_Word(unsigned int Value) // At most 16 bits
 {
-	char* Hex_String = malloc(6u); // $ character, 4 hex characters, and null-terminator
+	char* Hex_String = (char*)malloc(6u); // $ character, 4 hex characters, and null-terminator
 	Hex_String[0] = '$';
 	Hex_String[5] = 0u;
 
