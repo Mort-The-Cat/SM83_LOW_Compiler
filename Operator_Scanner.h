@@ -252,6 +252,7 @@ unsigned char Scan_Operators(unsigned char* ROM, unsigned int* Token_Index, unsi
 
 		{ (const unsigned char[]) { T_REGISTER_PAIR_HL, T_EQUALS, T_SP, T_PLUS_EQUALS, T_HEX_LITERAL, T_SEMI }, 6, 0xF8u, Place_Operand_Opcode_Function },
 		{ (const unsigned char[]) { T_SP, T_PLUS_EQUALS, T_HEX_LITERAL, T_SEMI }, 4, 0xE8u, Place_Operand_Opcode_Function },
+		{ (const unsigned char[]) { T_SP, T_EQUALS, T_REGISTER_PAIR_HL, T_SEMI }, 4, 0xF9u, Place_Opcode_Function },
 
 		{ (const unsigned char[]) { T_REGISTER_A, T_ROTATE_LEFT, T_NUMBER, T_SEMI }, 4, 0x07u, Place_Opcode_Function },
 		{ (const unsigned char[]) { T_REGISTER_A, T_CARRY_LEFT_ROTATE, T_NUMBER, T_SEMI }, 4, 0x17u, Place_Opcode_Function },

@@ -1,8 +1,8 @@
 # How sound/music handles are stored:
 #   word -  Song file pointer HL 
 #   byte - Frame counter (1-256)
-#   byte - Note offset (this is the memory offset of the current note)
 #   byte - Current phrase offset
+#   byte - Note offset (this is the memory offset of the current note)
 
 
 # How sound/music files shall be stored:
@@ -23,15 +23,12 @@
 #   S - (software flag) This lets us know if we're providing new sweep values for channel 1
 #   F - most-significant bits of the channel frequency value
 
-# Note frequency:       %FFFF FFFF
-#   F - least-significant bits of channel frequency value
-
-# Note volume/envelope: %VVVV sPPP
-#   V - initial volume of note
-#   s - envelope add mode (set = increase vol, clear = decrease vol)
-#   P - time between envelope volume increments
-#           (How many (1/64) seconds per iteration)
-#           NOTE: A period of 0 disables envelope
+# Channel one sweep:    %-PPP sMMM
+#   P - time between sweep iteration
+#           (measured in 1/128 seconds)
+#           (a period of 0 deactivates the sweep)
+#   s - sign of sweep (0 = increase, 1 = decrease)
+#   M - magnitude of sweep
 
 # Note duty + length:   %DDLL LLLL
 #   D - duty of note
@@ -50,18 +47,25 @@
 #           length = 256 - L
 #           measured in (1/256) seconds
 
-# Channel one sweep:    %-PPP sMMM
-#   P - time between sweep iteration
-#           (measured in 1/128 seconds)
-#           (a period of 0 deactivates the sweep)
-#   s - sign of sweep (0 = increase, 1 = decrease)
-#   M - magnitude of sweep
+# Note volume/envelope: %VVVV sPPP
+#   V - initial volume of note
+#   s - envelope add mode (set = increase vol, clear = decrease vol)
+#   P - time between envelope volume increments
+#           (How many (1/64) seconds per iteration)
+#           NOTE: A period of 0 disables envelope
+
+# Note frequency:       %FFFF FFFF
+#   F - least-significant bits of channel frequency value
 
 # Each phrase lasts 16 notes
 
-subroutine Channel_1_Sound_Handle_Function
+subroutine Channel_Sound_Handle_Function
 {
     word Sound_Handle : HL;
+
+    # SP + $00 and SP + $01 are the function return pointers
+    # SP + $02 is the (lower byte) address of the NRx0 register used
+    # SP + $03 is padding 
 
     # we want to get frames/beat and compare to the current frame counter
 
@@ -73,4 +77,139 @@ subroutine Channel_1_Sound_Handle_Function
     # Set new values and then trigger channel
 
     # Once note is played, iterate to next note
+
+    B = [Sound_Handle];
+    Sound_Handle++;
+    C = [Sound_Handle];
+    Sound_Handle++;
+
+    [Sound_Handle]++;   # Increment frame counter
+
+    A = [BC];   # Places 'frames per beat' in A register
+    A < [Sound_Handle]; # Compares frames/beat with handle frame counter
+
+    # If carry, frame counter > frame/beat
+
+    return not_carry;   # If frame counter hasn't yet exceded frame/beat, 
+                        # no work necessary
+
+    [Sound_Handle] = $00;   # Reset frame counter
+
+    # Otherwise! Start work
+
+    # BC contains sound file pointer
+
+    BC++; # Get to phrase pointers
+
+    Sound_Handle++; # Move pointer to 'phrase offset'
+
+    #D = $00;
+    #E = [Sound_Handle];
+
+    push Sound_Handle;  # Puts to a side
+    L = [Sound_Handle];
+    H = $00;
+    HL += BC;
+    B = H;
+    C = L;
+    pop Sound_Handle;   # Gets value back right after
+
+    # This sets BC to the appropriate location in the phrase pointer array
+
+    A = [BC];
+    D = A;
+    BC++;
+    A = [BC];
+    E = A;      # Places phrase pointer in DE register
+
+    A |= D;     # Check if phrase pointer is the null terminator
+
+    return zero;    # If phrase pointer is null-terminated, finish work
+
+    # Otherwise, handle note code! :D
+
+    # DE is now the phrase pointer, containing note information
+
+    Sound_Handle++; # Get note-offset pointer
+
+    push Sound_Handle;
+    L = [Sound_Handle];
+    H = $00;
+    HL += DE;
+    D = H;
+    E = L;
+    pop Sound_Handle;
+
+    # Offsets DE by 'note offset'
+
+    # DE now is pointer to note information
+
+    [Sound_Handle]++;   # Increment note offset
+
+    A = [DE];   # This is the note wrapper
+    A.7;
+
+    jump not_zero Note_Trigger;
+        # Note isn't triggered? No work dw
+        # Just increment note/phrase
+        A.0;
+
+        jump zero Phrase_Not_Finished;
+            A ^= A;
+            [Sound_Handle--] = A;   # Zeroes note offset
+            [Sound_Handle]++;       # Increments phrase offset
+            [Sound_Handle]++;       # by 16-bits
+        label Phrase_Not_Finished;
+
+        return;             # and finish!
+    label Note_Trigger;
+
+    # There is actual note information? Okay! Start handling it...
+
+    push Sound_Handle;
+        HL = SP + $04;  # Gets NRx0 register byte
+                        # note that $02 is added because of previous 'push' instruction
+        C = [HL];
+    pop Sound_Handle;
+
+    DE++;
+    B = A;  # Stores in B for later
+    A = [DE];   # 
+
+    B.3;    # Sweep software bit
+    jump zero No_Sweep_Bit;
+        [$FF00 + C] = A;    # Sets sweep byte
+        DE++;
+        A = [DE];
+        [Sound_Handle]++;   # Increment note offset
+    label No_Sweep_Bit;
+    C++;
+
+    B.4;
+    jump zero No_Length_Bit;
+        [$FF00 + C] = A;    # Sets duty/length byte
+        DE++;
+        A = [DE];
+        [Sound_Handle]++;   # Increment note offset
+    label No_Length_Bit;
+    C++;
+
+    B.5;
+    jump zero No_Volume_Bit;
+        [$FF00 + C] = A;
+        DE++;
+        A = [DE];
+        [Sound_Handle]++;   # Increment note offset
+    label No_Volume_Bit;
+    C++;
+
+    [$FF00 + C] = A;
+    A = B;              # Note trigger etc
+    C++;
+    [$FF00 + C] = A;    # Sets note trigger
+
+    [Sound_Handle]++;   # For the frequency byte, increment note offset
+
+    pop HL;     # Gets function return pointer
+    jump HL;    # Returns
 }

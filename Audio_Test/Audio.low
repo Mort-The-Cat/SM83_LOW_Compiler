@@ -1,8 +1,24 @@
+file Audio_Test/Memory_Copy.low;
+
 file Logo_Data.td;
 
 file LOW_Macros.low;
 
-subroutine Main_Loop $0200
+data Placeholder $0200
+{
+    # No data
+}
+
+file Audio_Test/Test_Song.low;
+file Audio_Test/Song_Interpreter.low;
+
+data Song_Handle_Data
+{
+    high(Test_Song) Test_Song
+    $00 $00 $00
+}
+
+subroutine Main_Loop
 {
     HL = $FF20;
     A ^= A;
@@ -14,8 +30,25 @@ subroutine Main_Loop $0200
     A = $C0;
     [HL++] = A;
 
+    
+    HL = Song_Handle_Data;
+    BC = $D000; # Nice free area in WRAM
+    DE = $05;
+    call Memcpy;    # This copies the sound handle data into memory
 
     label Audio_Loop;
+
+    label Wait_For_VBlank;
+        A = [$FF00 + LCDY_REGISTER];
+        A < VBLANK_LY;
+    jump not_zero Wait_For_VBlank;
+
+    C = $10;    # Channel 1
+    push BC;
+    HL = $D000; # This is the pointer to the sound handle we created earlier
+    call Channel_Sound_Handle_Function;
+    SP += $02;  # We remove the local scope ourselves
+
     jump Audio_Loop;
 }
 
@@ -24,6 +57,9 @@ file Audio_Test/Test_Song.low;
 
 subroutine Main $0150
 {
+    HL = $CFFF;
+    SP = HL;    # Sets stack pointer nicely
+
     A ^= A;
     [$FF00 + INTERRUPT_ENABLE_REGISTER] = A; # This disables all interrupts
 
@@ -39,6 +75,9 @@ subroutine Main $0150
 
     A = $FF;
     [$FF00 + $FF25] = A;
+
+    A = $80;
+    [$FF00 + LCDC_REGISTER] = A;
 
     jump Main_Loop;
 }

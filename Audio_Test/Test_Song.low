@@ -2,10 +2,11 @@ data Test_Phrase
 {
     #TEVLSFFF
     %10101000
-        %00010000 # Frequency
+        #-PPPsMMM
+        %00001011 # Sweep disabled
 #        VVVVsPPP
-        %01000100 # Volume/envelope
-        %00000000 # Sweep
+        %11110100 # Volume/envelope
+        %00010000 # Frequency
 
     # That's the first note! Only took 4 bytes
 
@@ -25,14 +26,43 @@ data Test_Phrase
         %00000000
 
     %10000000
-        %01000000
+        %00010000
 
     # This is all!
+
+    # End phrase with special $01 terminator
+
+    %00000001   # No trigger but has LSB set
+                # Signals end of phrase
+}
+
+data Test_Phrase_2
+{
+    #TEVLsFFF
+    %10101111
+        %00111011
+        %11100010
+        %10000000
+
+    %10000111
+        %10000000
+
+    %10000111
+        %10000000
+
+    $00 $00 $00 $00 $00
+
+    $01
 }
 
 data Test_Song
 {
     $40 # Frames per beat (64 frames)
     high(Test_Phrase) Test_Phrase
+    high(Test_Phrase_2) Test_Phrase_2
+    high(Test_Phrase) Test_Phrase
+    high(Test_Phrase) Test_Phrase
+    high(Test_Phrase) Test_Phrase
+    high(Test_Phrase_2) Test_Phrase_2
     $00 $00 # End of song
 }
