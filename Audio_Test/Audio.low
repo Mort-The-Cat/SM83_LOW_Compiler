@@ -16,6 +16,10 @@ data Song_Handle_Data
 {
     high(Test_Song) Test_Song
     $00 $00 $00
+
+    $00
+    $00
+    $00
 }
 
 subroutine Main_Loop
@@ -33,22 +37,39 @@ subroutine Main_Loop
     
     HL = Song_Handle_Data;
     BC = $D000; # Nice free area in WRAM
-    DE = $05;
+    DE = $08;
     call Memcpy;    # This copies the sound handle data into memory
 
+    HL = Song_Handle_Data;
+    BC = $D008;
+    DE = $08;
+    call Memcpy;
+
     label Audio_Loop;
+        #A = %00001011;
+        #[$FF00 + $FF10] = A;
 
-    label Wait_For_VBlank;
-        A = [$FF00 + LCDY_REGISTER];
-        A < VBLANK_LY;
-    jump not_zero Wait_For_VBlank;
+        label Wait_For_VBlank_End;
+            A = [$FF00 + LCDY_REGISTER];
+            A < VBLANK_LY;
+        jump not_carry Wait_For_VBlank_End; # While we're still in VBlank
 
-    C = $10;    # Channel 1
-    push BC;
-    HL = $D000; # This is the pointer to the sound handle we created earlier
-    call Channel_Sound_Handle_Function;
-    SP += $02;  # We remove the local scope ourselves
+        label Wait_For_VBlank;
+            A = [$FF00 + LCDY_REGISTER];
+            A < VBLANK_LY;
+        jump not_zero Wait_For_VBlank;
 
+        C = $10;    # Channel 1
+        push BC;
+        HL = $D000; # This is the pointer to the sound handle we created earlier
+        call Channel_Sound_Handle_Function;
+        SP += $02;  # We remove the local scope ourselves
+
+        #C = $15;    # Channel 2
+        #push BC;
+        #HL = $D008;
+        #call Channel_Sound_Handle_Function;
+        #SP += $02;
     jump Audio_Loop;
 }
 

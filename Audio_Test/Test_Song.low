@@ -1,11 +1,12 @@
 data Test_Phrase
 {
     #TEVLSFFF
-    %10101000
+    %10111000
         #-PPPsMMM
         %00001011 # Sweep disabled
+        %10000000 # 25% duty, length unused
 #        VVVVsPPP
-        %11110100 # Volume/envelope
+        %11110110 # Volume/envelope
         %00010000 # Frequency
 
     # That's the first note! Only took 4 bytes
@@ -25,6 +26,8 @@ data Test_Phrase
     %10000001 # Higher note
         %00000000
 
+    %00000000 # Blank note
+
     %10000000
         %00010000
 
@@ -39,8 +42,9 @@ data Test_Phrase
 data Test_Phrase_2
 {
     #TEVLsFFF
-    %10101111
+    %10111111
         %00111011
+        %11000000 # 25% duty, length unused
         %11100010
         %10000000
 
@@ -57,7 +61,7 @@ data Test_Phrase_2
 
 data Test_Song
 {
-    $40 # Frames per beat (64 frames)
+    $10 # Frames per beat (16 frames)
     high(Test_Phrase) Test_Phrase
     high(Test_Phrase_2) Test_Phrase_2
     high(Test_Phrase) Test_Phrase

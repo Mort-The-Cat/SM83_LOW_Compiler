@@ -3,6 +3,9 @@
 #   byte - Frame counter (1-256)
 #   byte - Current phrase offset
 #   byte - Note offset (this is the memory offset of the current note)
+#   byte - Previous sweep byte
+#   byte - Previous duty/length byte
+#   byte - Previous volume byte
 
 
 # How sound/music files shall be stored:
@@ -147,69 +150,93 @@ subroutine Channel_Sound_Handle_Function
     [Sound_Handle]++;   # Increment note offset
 
     A = [DE];   # This is the note wrapper
-    A.7;
+    A |= A;
 
-    jump not_zero Note_Trigger;
-        # Note isn't triggered? No work dw
-        # Just increment note/phrase
-        A.0;
+    jump zero Check_End_Of_Phrase;    # If the note wrapper is $00, 
+                    # new triggers and registers aren't necessary
 
-        jump zero Phrase_Not_Finished;
-            A ^= A;
-            [Sound_Handle--] = A;   # Zeroes note offset
-            [Sound_Handle]++;       # Increments phrase offset
-            [Sound_Handle]++;       # by 16-bits
-        label Phrase_Not_Finished;
+    push AF;
 
-        return;             # and finish!
-    label Note_Trigger;
-
-    # There is actual note information? Okay! Start handling it...
-
-    push Sound_Handle;
-        HL = SP + $04;  # Gets NRx0 register byte
-                        # note that $02 is added because of previous 'push' instruction
-        C = [HL];
-    pop Sound_Handle;
+    B = H;
+    C = L;
+    BC++;   # Previous sweep byte
 
     DE++;
-    B = A;  # Stores in B for later
-    A = [DE];   # 
-
-    B.3;    # Sweep software bit
+    A.3;    # New sweep byte?
     jump zero No_Sweep_Bit;
-        [$FF00 + C] = A;    # Sets sweep byte
-        DE++;
         A = [DE];
-        [Sound_Handle]++;   # Increment note offset
+        [BC] = A;
+        DE++;
+        pop AF;
+        SP += $FE;
+        [Sound_Handle]++;   # Increments note offset
     label No_Sweep_Bit;
-    C++;
 
-    B.4;
+    BC++;
+    A.4;    # New duty/length byte?
     jump zero No_Length_Bit;
-        [$FF00 + C] = A;    # Sets duty/length byte
-        DE++;
         A = [DE];
-        [Sound_Handle]++;   # Increment note offset
+        [BC] = A;
+        DE++;
+        pop AF;
+        SP += $FE;
+        [Sound_Handle]++;
     label No_Length_Bit;
-    C++;
 
-    B.5;
+    BC++;
+    A.5;    # New volume byte?
     jump zero No_Volume_Bit;
-        [$FF00 + C] = A;
-        DE++;
         A = [DE];
-        [Sound_Handle]++;   # Increment note offset
+        [BC] = A;
+        DE++;
+        pop AF;
+        SP += $FE;
+        [Sound_Handle]++;
     label No_Volume_Bit;
-    C++;
 
+    [Sound_Handle]++;   # We increment this value ahead of time
+
+    # Here, we copy the updated values into the registers
+
+    push HL;
+        HL = SP + $06; # register address + $04 because of both push instructions
+        C = [HL];
+    pop HL;
+
+    HL++;
+    A = [HL++];
+    [$FF00 + C] = A;    # Sweep
+    A = [HL++];
+    C++;
+    [$FF00 + C] = A;    # Duty/length
+    A = [HL--];
+    C++;
+    [$FF00 + C] = A;    # Volume
+
+    A = [DE];           # New frequency value
+    C++;
     [$FF00 + C] = A;
-    A = B;              # Note trigger etc
+
+    pop AF;             # Note wrapper & trigger 
     C++;
-    [$FF00 + C] = A;    # Sets note trigger
+    [$FF00 + C] = A;    # Hurray! Played the note
 
-    [Sound_Handle]++;   # For the frequency byte, increment note offset
+    # Now, we do final end-of-phrase checks!
 
-    pop HL;     # Gets function return pointer
-    jump HL;    # Returns
+    Sound_Handle--;     
+    Sound_Handle--;     # Decrements pointer back to note offset again
+
+    label Check_End_Of_Phrase;
+
+    DE++;
+    A = [DE];
+    A--;
+    return not_zero;    # If next note wrapper isn't $01, no worries!
+                        # If it IS, we need to update the phrase
+
+    [Sound_Handle--] = A;   # Set note offset to zero
+    [Sound_Handle]++;
+    [Sound_Handle]++;   # Increment phrase offset by 16-bits
+
+    return;             # Done!
 }
