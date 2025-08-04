@@ -7,7 +7,6 @@
 #   byte - Previous duty/length byte
 #   byte - Previous volume byte
 
-
 # How sound/music files shall be stored:
 
 # Frames per beat (how many frames need to pass before reaching next beat)

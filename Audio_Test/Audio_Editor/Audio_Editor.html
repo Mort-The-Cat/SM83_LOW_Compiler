@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<style>
+    td {
+        border: 2px solid #dddddd;
+        padding: 8px;
+    }
+
+    button{
+        background-color: #cccccc;
+        border: 2px solid #aaaaaa;
+    }
+
+    .extras{
+        max-width: 50px;
+    }
+</style>
+
+<body onload = "Setup_Page();">
+    <table id="Phrase_Table">
+        <tr>
+            <td id="Phrase_Row_Number">
+                Phrase: $00
+                <button onclick="Previous_Phrase();">&lt;</button>
+                <button onclick="Next_Phrase();">&gt;</button>
+            </td>
+
+            <td>
+                Notes
+            </td>
+
+            <td>
+                Extras - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                <button onclick = "Update_Phrase_Channel_Type(this);">Square</button>
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                $00
+            </td>
+
+            <td>
+                -
+            </td>
+
+            <td>
+                ---
+            </td>
+        </tr>
+    </table>
+
+    <div>
+        <style>
+            table
+            {
+                float : left;
+            }
+
+            .beat_button
+            {
+                clear : left;
+                
+            }
+        </style>
+
+        <button class="beat_button" onclick = "Add_New_Beat();">
+            New Beat
+        </button>
+
+        <button class="beat_button" onclick = "Delete_Beat();">
+            Delete Beat
+        </button>
+    </div>
+</body>
+
+</html>
+
+<script src="Gameboy_Notes.js"></script>
+
+<script>
+    // const { Note, Notes } = require("./Gameboy_Notes.js");
+
+    const Channel_Type = Object.freeze
+    (
+        {
+            Square : 0,
+            Wave : 1,
+            Noise : 2
+        }
+    );
+
+    const Channel_Type_Names = ["Square", "Wave", "Noise"];
+
+    // How should a phrase be structured?
+    // List of beat infos
+    // Including 
+    //  - what notes (if any) to play as well as 
+    //  - as well as what length (if any) etc etc
+
+    // The program will hold onto a list of phrases
+
+    // The song will be made up of phrase datas
+
+    class Beat
+    {
+        constructor()
+        {
+            this.Note_ID = 0x000; // This is the code for a blank note
+
+            this.New_Duty_Length = false;
+            this.New_Volume_Envelope = false;
+            this.New_Sweep = false;
+            this.Enable_Length = false;
+
+            this.Duty = 1;
+            this.Length = 31;      // between 0-63
+            this.Volume = 14;      // 4 bits for volume: 0-15 (for square wave)
+            this.Volume_Envelope = -2; // between -7 and 7
+            this.Sweep_Shift = -3;     // frequency * 2^-|shift| is the change in sweep
+                                        // 0-7
+            this.Sweep_Period = 0; //3;    // 0-7
+
+            // These are all the separate customisable parameters
+        }
+    }
+
+    class Phrase
+    {
+        constructor()
+        {
+            this.List_Of_Beats = [ new Beat() ];
+
+            this.Phrase_Channel = Channel_Type.Square;
+        }
+    }
+
+    var Phrases = [];
+    for(let N = 0; N < 256; N++)
+    {
+        Phrases.push(new Phrase());
+    }
+
+    var Phrase_ID = 0;
+
+    function Next_Phrase()
+    {
+        if(Phrase_ID < 255)
+            Phrase_ID++;
+
+        Update_Interface();
+    }
+
+    function Previous_Phrase()
+    {
+        if(Phrase_ID > 0)
+            Phrase_ID--;
+
+        Update_Interface();
+    }
+
+    var Audio_Context;
+
+    function Setup_Page()
+    {
+        Audio_Context = new (window.AudioContext || window.WebkitAudioContext)();
+
+        Update_Interface();
+    }
+
+    function Play_Square_Note(Volume, Frequency, Duty, Length, Volume_Envelope, Sweep_Shift, Sweep_Period) // This is just for the demoplayback
+    {
+        if(Frequency == 0)
+            return;
+
+        let Oscillator = Audio_Context.createOscillator();
+        let Gain_Node = Audio_Context.createGain();
+
+        // Duty handler
+
+        let Constant = Audio_Context.createConstantSource();
+        Constant.offset.value = [0.125, 0.25, 0.50, 0.75][Duty];
+        Constant.connect(Gain_Node);
+
+        Oscillator.type = 'square';
+
+        // Duty handler
+
+        let Produced_Frequency = 131072 / (2048 - Frequency);
+
+        Oscillator.frequency.setValueAtTime(Produced_Frequency, Audio_Context.currentTime);
+
+        
+        if(Sweep_Period != 0)
+        {
+            if(Sweep_Shift < 0)
+            {
+                for(let Iteration = 1; Iteration < 512; Iteration++)
+                {
+                    let Final_Produced_Frequency = 131072 / (2048 - (
+                        Frequency * Math.pow(1.0 - Math.pow(0.5, Math.abs(Sweep_Shift)), Iteration/Sweep_Period)
+                    ));
+
+                    Oscillator.frequency.setValueAtTime(Final_Produced_Frequency, Audio_Context.currentTime + (1 + Iteration) / 128);
+                }
+            }
+        }
+
+        Oscillator.connect(Gain_Node);
+        Gain_Node.connect(Audio_Context.destination);
+        Oscillator.start();
+        Constant.start();
+
+        Gain_Node.gain.setValueAtTime(Volume / 15, Audio_Context.currentTime);
+        
+        if(Volume_Envelope < 0)
+        {
+            let Time_Until_Zero = 1 - (Volume * Volume_Envelope);
+            Time_Until_Zero /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(0, Audio_Context.currentTime + Time_Until_Zero);
+        }
+        else if(Volume_Envelope > 0)
+        {
+            let Time_Until_Max = (15 - Volume) * Volume_Envelope;
+            Time_Until_Max /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(1, Audio_Context.currentTime + Time_Until_Max);
+        }
+
+        setTimeout(() => 
+        {
+            Oscillator.stop();
+            Oscillator.disconnect();
+            Oscillator = null;
+        }, 1000 * (64 - Length) / 256);
+    }
+
+    function Play_Square_Note_From_Index(Index)
+    {
+        Play_Square_Note(
+            Phrases[Phrase_ID].List_Of_Beats[Index].Volume, 
+            Notes[Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID].Value, 
+            Phrases[Phrase_ID].List_Of_Beats[Index].Duty, 
+            Phrases[Phrase_ID].List_Of_Beats[Index].Length - 64 * (!Phrases[Phrase_ID].List_Of_Beats[Index].Enable_Length), 
+            Phrases[Phrase_ID].List_Of_Beats[Index].Volume_Envelope,
+            Phrases[Phrase_ID].List_Of_Beats[Index].Sweep_Shift,
+            Phrases[Phrase_ID].List_Of_Beats[Index].Sweep_Period
+        );
+    }
+
+    function Update_Phrase_Channel_Type(Element)
+    {
+        Phrases[Phrase_ID].Phrase_Channel = (Phrases[Phrase_ID].Phrase_Channel + 1) % 3;
+
+        Element.innerHTML = Channel_Type_Names[Phrases[Phrase_ID].Phrase_Channel];
+
+        Update_Interface();
+    }
+
+    function Delete_Beat()
+    {
+        if(Phrases[Phrase_ID].List_Of_Beats.length > 1) // Every phrase must have at least 1 beat
+        {
+            Phrases[Phrase_ID].List_Of_Beats.pop();
+        }
+
+        Update_Interface();
+    }
+
+    function Add_New_Beat()
+    {
+        Phrases[Phrase_ID].List_Of_Beats.push( new Beat() );
+
+        Update_Interface();
+    }
+
+    function Hex_Code(Int)
+    {
+        return "$" + (Int < 16 ? "0" : "") + Int.toString(16).toUpperCase();
+    }
+
+    function Update_Note_Element_Data(Event, Index)
+    {
+        //let Note_Index = Notes.findIndex(Note => Note.Name == Event.target.value);
+
+        let Key_Pressed = Event.target.value[Event.target.value.length - 1];
+
+        let New_Note = Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID;
+
+        switch(Key_Pressed)
+        {
+            case 'd':
+                New_Note++;
+            break;
+
+            case 'a':
+                New_Note--;
+            break;
+
+            case 'w':
+                New_Note += 12;
+            break;
+
+            case 's':
+                New_Note -= 12;
+            break;
+
+            default:
+
+            break;
+        }
+
+        New_Note = New_Note < 0 ? 0 : New_Note;
+        New_Note = New_Note >= Notes.length ? 0 : New_Note;
+
+        Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID = New_Note;
+
+        Event.target.value = Notes[New_Note].Name;
+
+        Play_Square_Note_From_Index(Index);
+
+        // Update_Interface();
+
+        /*if(Note_Index != -1)
+        {
+            Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID = Note_Index;
+            Event.target.style.color = "black";
+            //Update_Interface();
+        }
+        else
+        {
+            Event.target.style.color = "red";
+            //Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID = 0x00;
+        }*/
+    }
+
+    function Update_Interface() // This is called just to update all of the HTML elements
+    {
+        let Table = document.getElementById("Phrase_Table");
+
+        // We want to reset the table and add all of the beats again one-by-one
+
+        while(Table.rows.length > 1) // Resets table
+        {
+            Table.deleteRow(-1);
+        }
+
+        for(let N = 0; N < Phrases[Phrase_ID].List_Of_Beats.length; N++)
+        {
+            let New_Row = Table.insertRow();
+
+            let Beat_Counter = New_Row.insertCell(0);
+            let Note = New_Row.insertCell(1);
+            let Extras = New_Row.insertCell(2);
+
+            // Beat_Counter.innerHTML = Hex_Code(N);
+
+            Beat_Counter.innerHTML = Hex_Code(N) + "<button onclick=\"Play_Square_Note_From_Index(" + N + ");\">⏵</button>";
+
+            Note.innerHTML = "<input class=\"extras\" type=\"text\" onBlur=\"Update_Interface();\" maxLength=\"5\" placeholder=\"" + Notes[Phrases[Phrase_ID].List_Of_Beats[N].Note_ID].Name + "\"></input>";
+
+            Note.addEventListener("input", (Event) => 
+            {
+                Update_Note_Element_Data(Event, N);
+            });
+
+            Extras.innerHTML = 
+                "Swp P:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Sweep_Period + "\"></input>" + 
+                "Swp M:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Sweep_Shift + "\"></input>" + 
+                "D:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Duty + "\"></input>" + 
+                "L:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Length + "\"></input>" +
+                "V:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Volume + "\"></input>" +
+                "E:<input class=\"extras\" type=\"text\" maxLength=\"5\" placeholder=\"" + Phrases[Phrase_ID].List_Of_Beats[N].Volume_Envelope + "\"></input>";
+
+            //
+
+            //Note.innerHTML = 
+
+            // Extras.innerHTML = "<input type=\"checkBox\" defaultValue=\"" + Phrases[Phrase_ID].List_Of_Beats[N].New_Sweep + "\"></input>";
+        
+            //Extras.addEventListener("input", (Event) =>)
+        }
+    }
+</script>

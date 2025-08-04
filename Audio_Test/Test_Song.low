@@ -43,9 +43,11 @@ data Test_Phrase_2
 {
     #TEVLsFFF
     %10111111
+        #-PPPsSSS
         %00111011
-        %11000000 # 25% duty, length unused
-        %11100010
+        %11000000 # 75% duty, length unused
+        #VVVVsPPP
+        %11100010 # volume envelope
         %10000000
 
     %10000111
