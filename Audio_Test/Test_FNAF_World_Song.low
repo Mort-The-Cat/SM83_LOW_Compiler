@@ -1,0 +1,28 @@
+
+data Test_Song
+{
+    $06
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    $00 $00
+}
+
+data Test_Song_2
+{
+    $06
+    high(Phrase_1) Phrase_1
+    high(Phrase_2) Phrase_2
+    high(Phrase_3) Phrase_3
+    high(Phrase_4) Phrase_4
+    high(Phrase_5) Phrase_5
+    high(Phrase_6) Phrase_6
+    high(Phrase_7) Phrase_7
+    high(Phrase_7) Phrase_7
+    $00 $00
+}

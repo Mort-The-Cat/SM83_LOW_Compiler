@@ -9,12 +9,23 @@ data Placeholder $0200
     # No data
 }
 
-file Audio_Test/Test_Song.low;
+file Audio_Test/Test_FNAF_World_File.low;
+file Audio_Test/Test_FNAF_World_Song.low;
 file Audio_Test/Song_Interpreter.low;
 
 data Song_Handle_Data
 {
     high(Test_Song) Test_Song
+    $00 $00 $00
+
+    $00
+    $00
+    $00
+}
+
+data Song_Handle_2_Data
+{
+    high(Test_Song_2) Test_Song_2
     $00 $00 $00
 
     $00
@@ -40,7 +51,7 @@ subroutine Main_Loop
     DE = $08;
     call Memcpy;    # This copies the sound handle data into memory
 
-    HL = Song_Handle_Data;
+    HL = Song_Handle_2_Data;
     BC = $D008;
     DE = $08;
     call Memcpy;
@@ -65,16 +76,13 @@ subroutine Main_Loop
         call Channel_Sound_Handle_Function;
         SP += $02;  # We remove the local scope ourselves
 
-        #C = $15;    # Channel 2
-        #push BC;
-        #HL = $D008;
-        #call Channel_Sound_Handle_Function;
-        #SP += $02;
+        C = $15;    # Channel 2
+        push BC;
+        HL = $D008;
+        call Channel_Sound_Handle_Function;
+        SP += $02;
     jump Audio_Loop;
 }
-
-file Audio_Test/Song_Interpreter.low;
-file Audio_Test/Test_Song.low;
 
 subroutine Main $0150
 {

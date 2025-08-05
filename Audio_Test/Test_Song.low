@@ -72,3 +72,27 @@ data Test_Song
     high(Test_Phrase_2) Test_Phrase_2
     $00 $00 # End of song
 }
+
+data Other_Test_Song
+{
+    $10 # Frames per beat (16 frames)
+    high(Phrase_0) Phrase_0
+    high(Phrase_1) Phrase_1
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_0) Phrase_0
+    high(Phrase_1) Phrase_1
+    $00 $00
+}
+
+data Backing_Track
+{
+    $10
+    high(Phrase_2) Phrase_2
+    high(Phrase_3) Phrase_3
+    high(Phrase_2) Phrase_2
+    high(Phrase_2) Phrase_2
+    high(Phrase_2) Phrase_2
+    high(Phrase_3) Phrase_3
+    $00 $00
+}
