@@ -67,7 +67,7 @@ subroutine Channel_Sound_Handle_Function
 
     # SP + $00 and SP + $01 are the function return pointers
     # SP + $02 is the (lower byte) address of the NRx0 register used
-    # SP + $03 is padding 
+    # SP + $03 is a priority bit (if this is nonzero, we don't actually want to play any sound)
 
     # we want to get frames/beat and compare to the current frame counter
 
@@ -84,7 +84,7 @@ subroutine Channel_Sound_Handle_Function
     Sound_Handle++;
     C = [Sound_Handle];
     Sound_Handle++;
-
+  
     [Sound_Handle]++;   # Increment frame counter
 
     A = [BC];   # Places 'frames per beat' in A register
@@ -198,11 +198,20 @@ subroutine Channel_Sound_Handle_Function
     # Here, we copy the updated values into the registers
 
     push HL;
-        HL = SP + $06; # register address + $04 because of both push instructions
+        HL = SP + $07; # register address + $04 because of both push instructions
+
+        A = [HL--]; # This is the priority byte (checks if we want to play or not)
+        A |= A;
+        jump zero Priority_Passed;
+            pop HL;
+            SP += $02;  # Reverses previous push instructions?
+            jump Check_End_Of_Phrase;
+        label Priority_Passed;  # We're all good! Play the note like normal
+
         C = [HL];
     pop HL;
 
-    HL++;
+    HL++;               # Goes to note properties of Sound_Handle
     A = [HL++];
     [$FF00 + C] = A;    # Sweep
     A = [HL++];

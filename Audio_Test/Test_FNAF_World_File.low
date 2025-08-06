@@ -42,7 +42,7 @@ data Phrase_1
 	%10111100
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100110 # Volume/envelope
+		%10100111 # Volume/envelope
 		%10000011 # Frequency
 
 	$00 # Blank note
@@ -77,7 +77,7 @@ data Phrase_2
 	%10111100
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100100 # Volume/envelope
+		%10100110 # Volume/envelope
 		%10000011 # Frequency
 
 	$00 # Blank note
@@ -129,7 +129,7 @@ data Phrase_4
 	%10111100
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100101 # Volume/envelope
+		%10100111 # Volume/envelope
 		%11100101 # Frequency
 
 	$00 # Blank note
@@ -156,7 +156,7 @@ data Phrase_5
 	%10111011
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100101 # Volume/envelope
+		%10100111 # Volume/envelope
 		%10011011 # Frequency
 
 	$00 # Blank note
@@ -183,7 +183,7 @@ data Phrase_6
 	%10111100
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100101 # Volume/envelope
+		%10100111 # Volume/envelope
 		%00010110 # Frequency
 
 	$00 # Blank note
@@ -210,7 +210,7 @@ data Phrase_7
 	%10111100
 		%00000000 # Sweep
 		%10000000 # Duty/Length
-		%10100101 # Volume/envelope
+		%10100111 # Volume/envelope
 		%10000011 # Frequency
 
 	$00 # Blank note

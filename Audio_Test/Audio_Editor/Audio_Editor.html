@@ -41,7 +41,7 @@
 
     <!--        -->
 
-    <img src="Download.jpg" width="20" height="20"></img>
+    <img onclick="Import_Song();" src="Download.jpg" width="20" height="20"></img>
     <img onclick="Export_Song();" src="Export.jpg" width="20" height="20"></img>
 </div>
 
@@ -150,9 +150,134 @@
 
     // The song will be made up of phrase datas
 
+    function Import_Song()
+    {
+        // This will take data from the IO_Window and use it to generate phrase data
+
+        // The song data can be assembled manually easily
+
+        let In = document.getElementById("IO_Window");
+
+        Lines = In.value.split("\n"); // This gets each individual line from the IO_Window
+
+        let Phrase_ID = 0;
+        let Beat_Index = 0;
+
+        for(let Index = 0; Index < Lines.length; Index++)
+        {
+            if(Lines[Index].includes("data Phrase_", 0)) // Start new phrase!
+            {
+                Beat_Index = 0; // New phrase, new beats
+
+                // index 12 is the code
+
+                console.log(Lines[Index].substring(12, 12 + 3));
+
+                Phrase_ID = parseInt(Lines[Index].substring(12, 12 + 3), 10);
+
+                console.log(Phrase_ID);
+
+                Phrases[Phrase_ID].List_Of_Beats.length = 0;
+            }
+
+            if(Lines[Index][0] == '\t') // Probably a note trigger byte
+            {
+                // Line[2] = trigger
+                // Line[3] = enable length?
+                // Line[4] = new volume?
+                // Line[5] = new duty/length
+                // Line[6] = new sweep
+                // Line[7,8,9] = msb frequency
+
+                let Frequency = parseInt(Lines[Index].substring(7, 7 + 3), 2) << 8;
+
+                let Enable_Length = Lines[Index][3] == '1';
+
+                Phrases[Phrase_ID].List_Of_Beats.push(new Beat());
+
+                Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Volume_Envelope = Lines[Index][4] == '1';
+                Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Duty_Length = Lines[Index][5] == '1';
+                Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Sweep = Lines[Index][6] == '1';
+
+                if(Lines[Index][2] != '0') // Not a blank note OR an end of phrase byte
+                {
+                    Index++;
+
+                    // Lines[0,1] = \t
+                    // Lines[2] = %
+                    // Lines[3] = bit 7
+                    // Lines[4] = bit 6
+                    // Lines[5] = bit 5
+                    // Lines[6] = bit 4
+                    // Lines[7] = bit 3
+                    // Lines[8] = bit 2
+
+                    if(Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Sweep)
+                    {
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Period = parseInt(Lines[Index].substring(4, 4 + 3), 2) << 4;
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Shift = parseInt(Lines[Index].substring(8, 8 + 3), 2);
+                        if(Lines[Index][7] == '1')
+                        {
+                            Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Shift *= -1;
+                        }
+
+                        Index++;
+                    }
+
+                    if(Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Duty_Length)
+                    {
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Duty = parseInt(Lines[Index].substring(3, 3 + 2), 2);
+                        if(Enable_Length)
+                        {
+                            Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Length = parseInt(Lines[Index].substring(5, 5 + 6), 2);
+                        }
+                        else
+                        {
+                            Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Length = -1;
+                        }
+
+                        Index++;
+                    }
+
+                    if(Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Volume_Envelope)
+                    {
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Volume = parseInt(Lines[Index].substring(3, 3 + 4), 2);
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Volume_Envelope = parseInt(Lines[Index].substring(8, 8 + 3), 2);
+                        if(Lines[Index][7] == '0')
+                        {
+                            Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Volume_Envelope *= -1;
+                        }
+
+                        Index++;
+                    }
+
+                    Frequency += parseInt(Lines[Index].substring(3, 3 + 8), 2);
+
+                    let Note_ID = 0;
+
+                    while(Notes[Note_ID].Value != Frequency)
+                    {
+                        Note_ID++;
+                    }
+
+                    Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Note_ID = Note_ID;
+                }
+                else
+                {
+                    if(Lines[Index][1] == '%')
+                    {
+                        Phrases[Phrase_ID].List_Of_Beats.pop();
+                    }
+                }
+
+                Beat_Index++;
+            }
+        }
+    }
+
     function Export_Song()
     {
-        // This will just export the first few EDITTED phrases for now
+        // This will just export the EDITTED phrases for now
 
         // Simply check if phrase length is >1
 

@@ -70,12 +70,14 @@ subroutine Main_Loop
             A < VBLANK_LY;
         jump not_zero Wait_For_VBlank;
 
+        B = $00;    # Priority bit ($00 = sound audio)
         C = $10;    # Channel 1
         push BC;
         HL = $D000; # This is the pointer to the sound handle we created earlier
         call Channel_Sound_Handle_Function;
         SP += $02;  # We remove the local scope ourselves
 
+        B = $00;    # Priority bit ($00 = sound audio)
         C = $15;    # Channel 2
         push BC;
         HL = $D008;
