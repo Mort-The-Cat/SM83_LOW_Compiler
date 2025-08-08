@@ -26,3 +26,20 @@ data Test_Song_2
     high(Phrase_7) Phrase_7
     $00 $00
 }
+
+data Title_Screen_Song_Melody
+{
+    $07
+    high(Phrase_8) Phrase_8
+    high(Phrase_8) Phrase_8
+    high(Phrase_9) Phrase_9
+    high(Phrase_8) Phrase_8
+    high(Phrase_8) Phrase_8
+    high(Phrase_10) Phrase_10
+    high(Phrase_8) Phrase_8
+    high(Phrase_8) Phrase_8
+    high(Phrase_9) Phrase_9
+    high(Phrase_8) Phrase_8
+    high(Phrase_8) Phrase_8
+    high(Phrase_11) Phrase_11
+}

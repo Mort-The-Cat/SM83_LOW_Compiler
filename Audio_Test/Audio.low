@@ -15,7 +15,7 @@ file Audio_Test/Song_Interpreter.low;
 
 data Song_Handle_Data
 {
-    high(Test_Song) Test_Song
+    high(Title_Screen_Song_Melody) Title_Screen_Song_Melody
     $00 $00 $00
 
     $00
@@ -40,7 +40,7 @@ subroutine Main_Loop
     [HL++] = A;
     A = $80;
     [HL++] = A;
-    A = $70;
+    A = 100;
     [HL++] = A;
     A = $C0;
     [HL++] = A;
@@ -77,7 +77,7 @@ subroutine Main_Loop
         call Channel_Sound_Handle_Function;
         SP += $02;  # We remove the local scope ourselves
 
-        B = $00;    # Priority bit ($00 = sound audio)
+        B = $01;    # Priority bit ($00 = sound audio)
         C = $15;    # Channel 2
         push BC;
         HL = $D008;

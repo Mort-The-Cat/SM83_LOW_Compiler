@@ -230,3 +230,102 @@ data Phrase_7
 	$00 # Blank note
 	%00000001 # End of phrase byte
 }
+data Phrase_8
+{
+	%10111100
+		%00000000 # Sweep
+		%10000000 # Duty/Length
+		%10000100 # Volume/envelope
+		%00010110 # Frequency
+
+	$00 # Blank note
+	%10000100
+		%00010110 # Frequency
+
+	%10000100
+		%00010110 # Frequency
+
+	%10000100
+		%10000011 # Frequency
+
+	%10000100
+		%11100101 # Frequency
+
+	%00000001 # End of phrase byte
+}
+data Phrase_9
+{
+	%11000101
+		%00010001 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000100
+		%11100101 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000100
+		%10000011 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000011
+		%11011010 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%00000001 # End of phrase byte
+}
+data Phrase_10
+{
+	%11000101
+		%00010001 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000101
+		%10101100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000101
+		%01100011 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000100
+		%10000011 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%00000001 # End of phrase byte
+}
+data Phrase_11
+{
+	%11000101
+		%00010001 # Frequency
+
+	$00 # Blank note
+	%11000101
+		%00010001 # Frequency
+
+	%11000101
+		%00010001 # Frequency
+
+	%11000101
+		%01100011 # Frequency
+
+	%11000101
+		%10101100 # Frequency
+
+	%11000101
+		%11101101 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000110
+		%01000010 # Frequency
+
+	%00000001 # End of phrase byte
+}
