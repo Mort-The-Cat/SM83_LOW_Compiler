@@ -59,7 +59,7 @@
 
                 <td>
                     Extras - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-                    <button onclick = "Update_Phrase_Channel_Type(this);">Square</button>
+                    <button id="Channel_Type_Element" onclick = "Update_Phrase_Channel_Type(this);">Square</button>
                 </td>
             </tr>
 
@@ -182,6 +182,10 @@
                 if(Lines[Index].includes("# Noise channel phrase"))
                 {
                     Phrases[Phrase_ID].Phrase_Channel = Channel_Type.Noise;
+                }
+                if(Lines[Index].includes("# Wave channel phrase"))
+                {
+                    Phrases[Phrase_ID].Phrase_Channel = Channel_Type.Wave;
                 }
             }
 
@@ -313,7 +317,7 @@
             let Length = 0;
             let Volume_Envelope = 0;
 
-            Out.value += "data Phrase_" + Phrase_ID + (Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise ? "# Noise channel phrase" : "") + "\n{\n";
+            Out.value += "data Phrase_" + Phrase_ID + (Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise ? " # Noise channel phrase" : (Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Wave ? " # Wave channel phrase" : "")) + "\n{\n";
 
             for(let Beat_Index = 0; Beat_Index < Phrases[Phrase_ID].List_Of_Beats.length; Beat_Index++)
             {
@@ -382,6 +386,12 @@
 
                 Byte = Notes[Current_Beat.Note_ID].Value & 0xFF;
 
+                if(Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise)
+                {
+                    Byte = Noise_Notes[Current_Beat.Note_ID].Value;
+                    Byte |= (Duty == 1 ? 8 : 0); // This sets the LSFR bit count (1 = 7-bit, 0 = 15-bit)
+                }
+
                 Out.value += "\t\t%" + Byte.toString(2).padStart(8, '0') + " # Frequency\n\n";
 
                 // Played a note!!! Yippee!!
@@ -413,7 +423,7 @@
 
             this.Duty = 2;         // between 0-3
             this.Length = -1;      // between 0-63 (-1 = length disabled)
-            this.Volume = 8;      // 4 bits for volume: 0-15 (for square wave)
+            this.Volume = 7;      // 4 bits for volume: 0-15 (for square wave)
             this.Volume_Envelope = 0; // between -7 and 7
             this.Sweep_Shift = 0;     // frequency * 2^-|shift| is the change in sweep
                                         // -7 to 7
@@ -483,6 +493,8 @@
 
         Play_Channel(Channel_1_Song);
         Play_Channel(Channel_2_Song);
+        Play_Channel(Wave_Song);
+        Play_Channel(Noise_Song);
     }
 
     function Schedule_Play_Channel_Note(Channel, Phrase_Index, Beat, Sweep_Shift, Sweep_Period, Volume, Volume_Envelope, Length, Duty, Local_Audio_Session)
@@ -507,15 +519,17 @@
             Volume = Phrases[Channel[Phrase_Index]].List_Of_Beats[Beat].Volume;
             Volume_Envelope = Phrases[Channel[Phrase_Index]].List_Of_Beats[Beat].Volume_Envelope;
         }
+
         if(Phrases[Channel[Phrase_Index]].Phrase_Channel == Channel_Type.Noise)
         {
             Play_Noise_Note(Volume,
-                Noise_Notes[Phrases[Channel[Phrase_Index]].List_of_Beats[Beat].Note_ID].Value,
+                Noise_Notes[Phrases[Channel[Phrase_Index]].List_Of_Beats[Beat].Note_ID].Value,
+                Duty,
                 Length - 500 * (Length == -1),
                 Volume_Envelope
             );
         }
-        else
+        else if(Phrases[Channel[Phrase_Index]].Phrase_Channel != Channel_Type.Wave)
         {
             Play_Square_Note(
                 Volume,
@@ -525,6 +539,14 @@
                 Volume_Envelope,
                 Sweep_Shift,
                 Sweep_Period
+            );
+        }
+        else
+        {
+            Play_Wave_Note(
+                Volume,
+                Notes[Phrases[Channel[Phrase_Index]].List_Of_Beats[Beat].Note_ID].Value,
+                Length - 500 * (Length == -1)
             );
         }
 
@@ -599,9 +621,9 @@
 
         if(Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise)
         {
-            Play_Noise_Note(Volume, Noise_Notes[Phrases[Phrase_ID].List_Of_Beats[Beat].Note_ID].Value, Length - 500 * (Length == -1), Volume_Envelope);
+            Play_Noise_Note(Volume, Noise_Notes[Phrases[Phrase_ID].List_Of_Beats[Beat].Note_ID].Value, Duty, Length - 500 * (Length == -1), Volume_Envelope);
         }
-        else
+        else if(Phrases[Phrase_ID].Phrase_Channel != Channel_Type.Wave)
         {
             Play_Square_Note(
                 Volume,
@@ -611,6 +633,14 @@
                 Volume_Envelope,
                 Sweep_Shift,
                 Sweep_Period
+            );
+        }
+        else
+        {
+            Play_Wave_Note(
+                Volume,
+                Notes[Phrases[Phrase_ID].List_Of_Beats[Beat].Note_ID].Value,
+                Length - 500 * (Length == -1)
             );
         }
 
@@ -654,6 +684,7 @@
     }
 
     var Noise_Buffer = [];
+    var Byte_Noise_Buffer = [];
 
     function Generate_Noise_Buffer()
     {
@@ -662,6 +693,13 @@
         for(let W = 0; W < 65000; W++)
         {
             Output[W] = Math.round(Math.random()) * 2 - 1; // Is either -1 or 1
+        }
+
+        Byte_Noise_Buffer = Audio_Context.createBuffer(1, 128, Audio_Context.sampleRate);
+        Output = Byte_Noise_Buffer.getChannelData(0);
+        for(let W = 0; W < 128; W++)
+        {
+            Output[W] = Math.round(Math.random()) * 2 - 1;
         }
     }
 
@@ -673,13 +711,74 @@
         return 262144.0 / (Math.max(0.5, Divider) * Math.pow(2, Step));
     }
 
-    function Play_Noise_Note(Volume, Frequency, Length, Volume_Envelope)
+    function Play_Wave_Note(Volume, Frequency, Length)
+    {
+        if(Frequency == 0)
+            return;
+
+        let Oscillator = Audio_Context.createOscillator();
+        let Gain_Node = Audio_Context.createGain();
+
+        // Duty handler
+
+        /*let Constant = Audio_Context.createConstantSource();
+        Constant.offset.value = [0.125, 0.25, 0.50, 0.75][Duty];*/
+
+        Oscillator.type = 'triangle';
+
+        let Produced_Frequency = 131072 / (2048 - Frequency);
+
+        Oscillator.frequency.setValueAtTime(Produced_Frequency, Audio_Context.currentTime);
+
+        Gain_Node.gain.setValueAtTime((Math.floor((Volume / 2) % 4) / 3) * 2, Audio_Context.currentTime);
+
+        Oscillator.connect(Gain_Node);
+        Gain_Node.connect(Audio_Context.destination);
+        Oscillator.start();
+        //Constant.start();
+
+        setTimeout((Oscillator, Gain_Node) => 
+        {
+            Oscillator.stop();
+            //Constant.stop();
+            Oscillator.disconnect();
+            Oscillator = null;
+            Gain_Node = null;
+        }, 1000 * (64 - Length) / 256, Oscillator, Gain_Node);
+    }
+
+    function Play_Noise_Note(Volume, Frequency, Duty, Length, Volume_Envelope)
     {
         if(Frequency == 0)
             return;
 
         let Source = Audio_Context.createBufferSource();
-        Source.buffer = Noise_Buffer;
+        let Gain_Node = Audio_Context.createGain();
+
+        if(Duty == 1)
+        {
+            Source.buffer = Byte_Noise_Buffer;
+        }
+        else
+        {
+            Source.buffer = Noise_Buffer;
+        }
+
+        Gain_Node.gain.setValueAtTime(Volume / 15, Audio_Context.currentTime);
+
+        if(Volume_Envelope < 0)
+        {
+            let Time_Until_Zero = 1 - (Volume * Volume_Envelope);
+            Time_Until_Zero /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(0, Audio_Context.currentTime + Time_Until_Zero);
+        }
+        else if(Volume_Envelope > 0)
+        {
+            let Time_Until_Max = (15 - Volume) * Volume_Envelope;
+            Time_Until_Max /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(1, Audio_Context.currentTime + Time_Until_Max);
+        }
+
         Source.loop = true;
         Source.start(0);
 
@@ -687,14 +786,16 @@
 
         console.log(Get_Noise_Frequency(Frequency));
 
-        Source.connect(Audio_Context.destination);
+        Source.connect(Gain_Node);
+        Gain_Node.connect(Audio_Context.destination);
 
         setTimeout(() => 
         {
             Source.stop();
             Source.loop = false;
             Source = null;
-        }, 1000 * (64 - Length) / 256);
+            Gain_Node = null;
+        }, 1000 * (64 - Length) / 256, Source, Gain_Node);
     }
 
     function Play_Square_Note(Volume, Frequency, Duty, Length, Volume_Envelope, Sweep_Shift, Sweep_Period) // This is just for the demoplayback
@@ -766,6 +867,25 @@
         }, 1000 * (64 - Length) / 256, Oscillator, Gain_Node);
     }
 
+    function Play_Noise_Note_From_Index(Index)
+    {
+        Play_Noise_Note(
+            Phrases[Phrase_ID].List_Of_Beats[Index].Volume,
+            Noise_Notes[Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID].Value,
+            Phrases[Phrase_ID].List_Of_Beats[Index].Duty,
+            Phrases[Phrase_ID].List_Of_Beats[Index].Length
+        )
+    }
+
+    function Play_Wave_Note_From_Index(Index)
+    {
+        Play_Wave_Note(
+            Phrases[Phrase_ID].List_Of_Beats[Index].Volume,
+            Notes[Phrases[Phrase_ID].List_Of_Beats[Index].Note_ID].Value,
+            Phrases[Phrase_ID].List_Of_Beats[Index].Length
+        );
+    }
+
     function Play_Square_Note_From_Index(Index)
     {
         Play_Square_Note(
@@ -790,10 +910,10 @@
 
     function Add_New_Phrase()
     {
-        Channel_1_Song.push(0);
-        Channel_2_Song.push(0);
-        Wave_Song.push(0);
-        Noise_Song.push(0);
+        Channel_1_Song.push(127);
+        Channel_2_Song.push(127);
+        Wave_Song.push(127);
+        Noise_Song.push(127);
 
         Update_Interface();
     }
@@ -873,7 +993,20 @@
 
         Event.target.value = (Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise ? Noise_Notes[New_Note].Name : Notes[New_Note].Name);
 
-        Play_Square_Note_From_Index(Index);
+        switch(Phrases[Phrase_ID].Phrase_Channel)
+        {
+            case Channel_Type.Square:
+                Play_Square_Note_From_Index(Index);
+            break;
+
+            case Channel_Type.Noise:
+                Play_Noise_Note_From_Index(Index);
+            break;
+
+            case Channel_Type.Wave:
+                Play_Wave_Note_From_Index(Index);
+            break;
+        }
 
         // Update_Interface();
     }
@@ -1011,6 +1144,9 @@
 
     function Update_Interface() // This is called just to update all of the HTML elements
     {
+        document.getElementById("Channel_Type_Element").innerHTML = 
+            Channel_Type_Names[Phrases[Phrase_ID].Phrase_Channel];
+
         let Table = document.getElementById("Phrase_Table");
 
         document.getElementById("Phrase_Row_Number").innerHTML = 
@@ -1034,8 +1170,18 @@
             let Extras = New_Row.insertCell(2);
 
             // Beat_Counter.innerHTML = Hex_Code(N);
-
-            Beat_Counter.innerHTML = Hex_Code(N) + "\n<button onclick=\"Play_Square_Note_From_Index(" + N + ");\">⏵</button>";
+            if(Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Square)
+            {
+                Beat_Counter.innerHTML = Hex_Code(N) + "\n<button onclick=\"Play_Square_Note_From_Index(" + N + ");\">⏵</button>";
+            }
+            else if(Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise)
+            {
+                Beat_Counter.innerHTML = Hex_Code(N) + "\n<button onclick=\"Play_Noise_Note_From_Index(" + N + ");\">⏵</button>";
+            }
+            else
+            {
+                Beat_Counter.innerHTML = Hex_Code(N) + "\n<button onclick=\"Play_Wave_Note_From_Index(" + N + ");\">⏵</button>";
+            }
             let Note_Name = "";
 
             if(Phrases[Phrase_ID].Phrase_Channel == Channel_Type.Noise)

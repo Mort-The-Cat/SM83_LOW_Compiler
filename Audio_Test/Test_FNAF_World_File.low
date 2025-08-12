@@ -329,3 +329,46 @@ data Phrase_11
 
 	%00000001 # End of phrase byte
 }
+data Phrase_12 # Noise channel phrase
+{
+	%10110110
+		%00000000 # Duty/Length
+		%11110001 # Volume/envelope
+		%01110100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%10100111
+		%01110001 # Volume/envelope
+		%00010100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%00000001 # End of phrase byte
+}
+data Phrase_13 # Noise channel phrase
+{
+	%11100110
+		%11110001 # Volume/envelope
+		%01110100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000110
+		%01110100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11000110
+		%01110100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%11100111
+		%01110001 # Volume/envelope
+		%00010100 # Frequency
+
+	$00 # Blank note
+	$00 # Blank note
+	%00000001 # End of phrase byte
+}

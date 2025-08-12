@@ -1,0 +1,105 @@
+file FNAF_World/Memory_Copy.low;
+
+file Logo_Data.td;
+
+file LOW_Macros.low;
+
+data Placeholder $0200
+{
+    # No data
+}
+
+file FNAF_World/Terrain_Graphics.td;
+
+data Alphabet_Tile_Data
+file FNAF_World/Alphabet_Tiles.td;
+
+file FNAF_World/Plush_Graphics.td;
+
+file FNAF_World/DMA_Handler.low;
+file FNAF_World/Meta_Sprite_Handling.low;
+
+subroutine Test_Main_Loop
+{
+    label Loop;
+
+        BC = $3030;
+        push BC;
+        BC = $0014;
+        push BC;
+        DE = Plush_Sprite_Data;
+        call Place_Sprites_In_OAM;
+
+        call Clean_OAM_Buffer;
+
+        label Wait_For_VBlank;
+            A = [$FF00 + LCDY_REGISTER];
+            A < VBLANK_LY;
+        jump not_zero Wait_For_VBlank;
+
+        call DMA_Transfer;
+
+    jump Loop;
+}
+
+subroutine Main
+{
+    # Initialise graphics memory
+
+    SP = $C2FF; # This gives us over 512 bytes for the stack (considering that C0AF are DMA buffer values)
+                # I can hardly imagine we'd ever need more than that
+                # This gives us way more memory for literally anything else
+
+    # Wait for VBlank
+
+    label Wait_For_VBlank;
+        A = [$FF00 + LCDY_REGISTER];
+        A < VBLANK_LY;
+    jump not_zero Wait_For_VBlank;
+
+    A ^= A;
+    [$FF00 + LCDC_REGISTER] = A;    # Turns off PPU to let us write memory
+
+    HL = Terrain_Tile_Data;
+    BC = VRAM_BLOCK_2;
+    DE = 720;
+    call Memcpy;
+
+    HL = Plush_Tile_Data;
+    #BC = VRAM_BLOCK_2;
+    DE = 320;
+    call Memcpy;
+
+    HL = Alphabet_Tile_Data;
+    BC = VRAM_BLOCK_1;
+    DE = 736;
+    call Memcpy;
+
+    #
+
+    # Setup graphics registers before turning PPU back on
+
+    call Init_DMA_HRAM_Function;
+
+    A = %11100100;
+    [$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
+    [$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
+
+    A = %11000100;
+    [$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
+
+    A = %11000011;
+    [$FF00 + LCDC_REGISTER] = A;
+
+    A = $00;
+    [OAM_Buffer_Counter] = A;
+
+    #
+
+    jump Test_Main_Loop;
+}
+
+subroutine Main_Jump $100
+{
+    jump Main;
+}

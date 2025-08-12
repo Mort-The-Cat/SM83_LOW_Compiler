@@ -1,0 +1,53 @@
+macro HRAM_DMA_Function $FF80;
+
+macro OAM_Buffer_Counter $C0A0;
+
+subroutine DMA_Instruction_Data
+{
+    [$FF00 + C] = A;		# 2 cycle - $01
+			# Begins DMA transfer
+	label DMA_Loop;
+	    B--;				# 1 cycle - $02
+	jump not_zero DMA_Loop;	# 3 cycles - $04
+	
+    return;					# 4 cycles - $05
+}
+
+subroutine Init_DMA_HRAM_Function
+{
+    HL = DMA_Instruction_Data;
+    BC = HRAM_DMA_Function;
+    DE = $0005;
+    call Memcpy;
+    return;
+}
+
+subroutine DMA_Transfer
+{
+    A = $C0;    # This is the location of the OAM buffer
+    BC = $2946;
+
+    jump HRAM_DMA_Function;
+}
+
+subroutine Clean_OAM_Buffer
+{
+    HL = OAM_Buffer_Counter;
+    L = [HL];
+    B = $00;
+    A = $A0;
+
+    label OAM_Clean_Loop;
+    [HL] = B;
+    L++;
+    L++;
+    L++;
+    L++;
+    A < L;
+    jump not_zero OAM_Clean_Loop;
+
+    A ^= A;
+    [OAM_Buffer_Counter] = A;
+
+    return;
+}

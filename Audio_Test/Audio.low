@@ -25,7 +25,7 @@ data Song_Handle_Data
 
 data Song_Handle_2_Data
 {
-    high(Test_Song_2) Test_Song_2
+    high(Title_Screen_Song_Drums) Title_Screen_Song_Drums
     $00 $00 $00
 
     $00
@@ -77,8 +77,8 @@ subroutine Main_Loop
         call Channel_Sound_Handle_Function;
         SP += $02;  # We remove the local scope ourselves
 
-        B = $01;    # Priority bit ($00 = sound audio)
-        C = $15;    # Channel 2
+        B = $00;    # Priority bit ($00 = sound audio)
+        C = $1F;    # Channel 2
         push BC;
         HL = $D008;
         call Channel_Sound_Handle_Function;
