@@ -1,0 +1,43 @@
+macro Frame_Counter $FFFB;  # 0-255, increments every frame
+
+macro Parallax_Scroll_Registers $C0B0; 
+    # This is used to increment the 
+    # parallax scrolling of various parts of the screen
+    # C0B0 - C0B7 bytes
+
+subroutine Increment_Parallax_Scroll_Registers
+{
+    # Increments the frame counter and increments scroll registers accordingly
+    A = [$FF00 + Frame_Counter];
+    A++;
+    [$FF00 + Frame_Counter] = A;
+
+    HL = $C0B3;
+
+    [HL] = $E2;
+    HL--;
+
+    #[HL++] = A;
+
+    E = $02;
+
+    A &= $03;
+    A += A;
+    swap A;
+
+    label Iterate_Layers;
+        A += A;
+        jump not_zero Skip_Scroll;
+            [HL]++;
+        label Skip_Scroll;
+
+        HL--;
+        E--;
+    jump not_zero Iterate_Layers;
+
+    A = [$FF00 + Frame_Counter];
+    [HL] = A;
+
+
+    return;
+}

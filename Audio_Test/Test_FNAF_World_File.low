@@ -3,7 +3,7 @@ data Phrase_0
 	%10111001
 		%00000000 # Sweep
 		%00000000 # Duty/Length
-		%01000010 # Volume/envelope
+		%01110010 # Volume/envelope
 		%00000111 # Frequency
 
 	$00 # Blank note
@@ -331,14 +331,15 @@ data Phrase_11
 }
 data Phrase_12 # Noise channel phrase
 {
-	%10110110
-		%00000000 # Duty/Length
-		%11110001 # Volume/envelope
-		%01110100 # Frequency
+	%11110111
+		%00011101 # Duty/Length
+		%01110001 # Volume/envelope
+		%01101101 # Frequency
 
 	$00 # Blank note
 	$00 # Blank note
-	%10100111
+	%10110111
+		%00000000 # Duty/Length
 		%01110001 # Volume/envelope
 		%00010100 # Frequency
 
@@ -348,23 +349,25 @@ data Phrase_12 # Noise channel phrase
 }
 data Phrase_13 # Noise channel phrase
 {
-	%11100110
-		%11110001 # Volume/envelope
-		%01110100 # Frequency
+	%11110111
+		%00011101 # Duty/Length
+		%01110001 # Volume/envelope
+		%01101101 # Frequency
 
 	$00 # Blank note
 	$00 # Blank note
-	%11000110
-		%01110100 # Frequency
+	%11000111
+		%01101101 # Frequency
 
 	$00 # Blank note
 	$00 # Blank note
-	%11000110
-		%01110100 # Frequency
+	%11000111
+		%01101101 # Frequency
 
 	$00 # Blank note
 	$00 # Blank note
-	%11100111
+	%10110111
+		%00000000 # Duty/Length
 		%01110001 # Volume/envelope
 		%00010100 # Frequency
 

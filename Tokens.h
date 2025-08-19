@@ -460,6 +460,28 @@ unsigned char Ascii_To_Code(unsigned char Character)
 	else if ('0' <= Character && Character <= '9')
 		return Character - '0';
 
+
+	switch (Character)
+	{
+	case ' ':
+		return 0x7Du;
+
+	case '.':
+		return 0x24u;
+
+	case ',':
+		return 0x25u;
+
+	case '!':
+		return 0x26u;
+
+	case '?':
+		return 0x27u;
+
+	case '\'':
+		return 0x28u;
+	}
+
 	return 0x2Du;
 }
 

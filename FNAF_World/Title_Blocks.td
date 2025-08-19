@@ -28,3 +28,10 @@
   $FD $07 $FD $07 $FD $07 $FD $07 
   $FD $07 $FD $FF $01 $FF $FF $FF
 }
+
+data FNAF_World_Title_Tile_Map  # 27 bytes
+{
+  $43 $46 $56 $43 $42 $42 $22 $26 $24
+  $43 $44 $46 $43 $44 $44 $64 $34 $46
+  $52 $55 $53 $52 $53 $35 $35 $25 $53
+} # Split up into nibbles, add $AE to each

@@ -4,43 +4,55 @@ file Logo_Data.td;
 
 file LOW_Macros.low;
 
-data Placeholder $0200
+data Placeholder $0150
 {
     # No data
 }
 
+subroutine Memcpy_Skip
+{
+    word Source : HL;
+	word Destination : BC;
+	word Length : DE;
+
+    label Loop;
+
+    A = [Source++];
+    [Destination] = A;
+    Destination++;
+    A ^= A;
+    [Destination] = A;
+    Destination++;
+
+    Length--;
+    A = D;
+    A |= E;
+
+    jump not_zero Loop;
+
+    return;
+}
+
 file FNAF_World/Terrain_Graphics.td;
+
+file FNAF_World/Global_Variables.low;
 
 data Alphabet_Tile_Data
 file FNAF_World/Alphabet_Tiles.td;
+
+data Title_Tile_Data
+file FNAF_World/Title_Blocks.td;
 
 file FNAF_World/Plush_Graphics.td;
 
 file FNAF_World/DMA_Handler.low;
 file FNAF_World/Meta_Sprite_Handling.low;
 
-subroutine Test_Main_Loop
-{
-    label Loop;
+file FNAF_World/Dialogue_Scene.low;
 
-        BC = $3030;
-        push BC;
-        BC = $0014;
-        push BC;
-        DE = Plush_Sprite_Data;
-        call Place_Sprites_In_OAM;
+file FNAF_World/Screen_Interrupt_Handler.low;
 
-        call Clean_OAM_Buffer;
-
-        label Wait_For_VBlank;
-            A = [$FF00 + LCDY_REGISTER];
-            A < VBLANK_LY;
-        jump not_zero Wait_For_VBlank;
-
-        call DMA_Transfer;
-
-    jump Loop;
-}
+file FNAF_World/Title_Screen.low;
 
 subroutine Main
 {
@@ -60,19 +72,33 @@ subroutine Main
     A ^= A;
     [$FF00 + LCDC_REGISTER] = A;    # Turns off PPU to let us write memory
 
+    HL = Background_Tile_Data;
+    BC = VRAM_BLOCK_2;          # Background/window VRAM block
+    DE = 752;
+    call Memcpy_Skip;
+
     HL = Terrain_Tile_Data;
-    BC = VRAM_BLOCK_2;
+    # BC = VRAM_BLOCK_2;        # Background/window VRAM block
     DE = 720;
     call Memcpy;
 
     HL = Plush_Tile_Data;
-    #BC = VRAM_BLOCK_2;
-    DE = 320;
+    BC = VRAM_BLOCK_0;      # Object VRAM block
+    DE = 336;
     call Memcpy;
 
     HL = Alphabet_Tile_Data;
-    BC = VRAM_BLOCK_1;
+    BC = VRAM_BLOCK_1;      # Shared VRAM block
     DE = 736;
+    call Memcpy;
+
+    HL = Title_Tile_Data;
+    DE = 224;
+    call Memcpy;
+
+    HL = Background_Tilemap_Data;
+    BC = VRAM_TILEM_0;
+    DE = 576;
     call Memcpy;
 
     #
@@ -81,14 +107,43 @@ subroutine Main
 
     call Init_DMA_HRAM_Function;
 
+    call Init_Title_Screen_Graphics;
+
+    HL = $0500;
+    push HL;
+    HL = $0512;
+    push HL;
+    call Initialise_UI_Prompt_Window;
+
+    HL = $0601;
+    push HL;
+    BC = Test_Text_Data;
+    call Write_String_To_Tilemap;
+
+    #
+
+    A = $0A;
+    [$FF00 + WINDOW_SCROLL_Y_REGISTER] = A;
+
+    A = %00000001;  # VBlank/HBlank function flags
+    [$FF00 + VBlank_Interrupt_Function] = A;
+    [$FF00 + HBlank_Interrupt_Function] = A;
+
+    A = $03;
+    [$FF00 + INTERRUPT_ENABLE_REGISTER] = A;    # Enables VBlank and LCD interrupts
+
+    #
+
     A = %11100100;
     [$FF00 + BACKGROUND_PALETTE_REGISTER] = A;
     [$FF00 + OBJECT_PALETTE_0_REGISTER] = A;
 
-    A = %11000100;
+    A = %11100000;
     [$FF00 + OBJECT_PALETTE_1_REGISTER] = A;
 
-    A = %11000011;
+    enablei;
+
+    A = %11100011;
     [$FF00 + LCDC_REGISTER] = A;
 
     A = $00;
@@ -96,10 +151,20 @@ subroutine Main
 
     #
 
-    jump Test_Main_Loop;
+    jump Title_Screen_Loop;
 }
 
-subroutine Main_Jump $100
+subroutine Main_Jump $0100
 {
     jump Main;
+}
+
+subroutine VBlank_Jump $0040
+{
+    jump VBlank_Handler;
+}
+
+subroutine HBlank_Jump $0048
+{
+    jump HBlank_Handler;
 }

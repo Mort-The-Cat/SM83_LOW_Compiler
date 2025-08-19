@@ -1,0 +1,123 @@
+macro VBlank_Interrupt_Function $FFFE;
+macro HBlank_Interrupt_Function $FFFD;
+macro HBlank_Scanline_Counter $FFFC;
+
+# These bytes index which function should be called during VBlank/HBlank
+
+data Title_Screen_HBlank_Data
+{
+    # Scanline, iteration
+    #23
+    47
+    63
+    79
+    255
+}
+subroutine Title_Screen_HBlank
+{
+    A = [$FF00 + HBlank_Scanline_Counter];
+    A++;
+
+    jump not_zero Check_Parallax;
+        [$FF00 + HBlank_Scanline_Counter] = A;
+
+        A ~= A; # Flips all the bits, gets $FF
+        [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+        A = 47;
+        [$FF00 + LYC_REGISTER] = A;
+
+        pop AF;
+
+        returni;
+    label Check_Parallax;
+
+    # Check if we've reached an important scanline
+
+    push BC;
+    push HL;
+
+    B = $00;
+    C = A;
+    HL = Title_Screen_HBlank_Data;
+    HL += BC;
+
+    jump carry Finished_Work;
+        C = HBlank_Scanline_Counter;
+        [$FF00 + C] = A;
+
+
+
+        A = [HL];
+        [$FF00 + LYC_REGISTER] = A;
+
+        A = [$FF00 + C];
+        A += Parallax_Scroll_Registers;
+        
+        H = $C0; # high(Parallax_Scroll_Registers)
+        L = A;
+        A = [HL];
+
+        [$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+        
+    label Finished_Work;
+
+    pop HL;
+    pop BC;
+    pop AF;
+
+    returni;
+}
+
+subroutine Title_Screen_VBlank # 01
+{
+    # This sets up the LCD status register stuff, interrupt registers,
+
+    # as well as the window scroll registers etc
+
+    call DMA_Transfer;
+
+    A = %01000000; # LYC without HBlank interrupts
+    [$FF00 + LCD_STATUS_REGISTER] = A;
+
+    A = $03;
+    [$FF00 + INTERRUPT_ENABLE_REGISTER] = A;
+
+    A = [$FF00 + WINDOW_SCROLL_Y_REGISTER];
+    A += $22;   # roughly 34 pixels
+    [$FF00 + LYC_REGISTER] = A;
+
+    A = $06;
+    [$FF00 + WINDOW_SCROLL_X_REGISTER] = A;
+
+    A = [Parallax_Scroll_Registers];
+    #A >>= 1;
+    #A ~= A;
+    [$FF00 + BACKGROUND_SCROLL_X_REGISTER] = A;
+    #A >>= 1;
+    A ^= A;
+    [$FF00 + BACKGROUND_SCROLL_Y_REGISTER] = A;
+
+    A = $FF;
+    [$FF00 + HBlank_Scanline_Counter] = A;
+
+    pop AF;
+
+    returni;    # That's all
+}
+
+subroutine VBlank_Handler
+{
+    push AF;    # CPU flags and 'A' value
+        A = [$FF00 + VBlank_Interrupt_Function];
+        A >><= 1;   # get first bit in carry flag
+        jump carry Title_Screen_VBlank;
+}
+
+subroutine HBlank_Handler
+{
+    push AF;    # CPU flags and 'A' value,  4 cycles
+        A = [$FF00 + HBlank_Interrupt_Function];    # 3 cycles
+        A--;
+        jump zero Title_Screen_HBlank;
+}
