@@ -98,7 +98,7 @@ macro CONTROLLER_REGISTER $FF00;
 	# bit 1 - B			/ Left
 	# bit 0 - A			/ Right
 
-	# Whichever  button is read depends on which bit has just been cleared.
+	# Whichever button is read depends on which bit has just been cleared.
 	# Takes a few clock cycles for the register to toggle properly.
 
 macro CONTROLLER_SSBA_FLAG $D0;

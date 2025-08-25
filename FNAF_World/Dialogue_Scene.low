@@ -9,6 +9,8 @@ subroutine Initialise_UI_Prompt_Window
     # SP + $04 origin X
     # SP + $05 origin Y
 
+    word Tilemap : DE;
+
     HL = SP + $04;
     C = [HL];   # X
     HL++;
@@ -24,7 +26,7 @@ subroutine Initialise_UI_Prompt_Window
     HL += HL; # x16
     HL += HL; # x32
 
-    DE = VRAM_TILEM_1;
+    # DE = VRAM_TILEM_1;
 
     HL += DE;
     HL += BC;
@@ -129,15 +131,25 @@ subroutine Initialise_UI_Prompt_Window
 
 data Test_Text_Data
 {
-    "HELLO! THIS IS" $FF
-    "A TEST!" $FF
-    "DONT YOU KNOW THAT" $FF
-    "HACKING IS A SIN?" $00
+    #"HELLO! THIS IS" $FF
+    #"A TEST!" $FF
+    #"DONT YOU KNOW THAT" $FF
+    #"HACKING IS A SIN?" $00
+    "SELECT DIFFICULTY" $FF
+    $FF
+    "  EASY" $FF
+    "  HARD" $00
+}
+
+data Select_Arrow_Sprite_Data
+{
+    $10 $00 $AB
 }
 
 subroutine Write_String_To_Tilemap
 {
     word String_Pointer : BC;
+    word Tilemap : HL;
 
     push BC;
 
@@ -149,8 +161,9 @@ subroutine Write_String_To_Tilemap
 
     # SP + $04 origin X
     # SP + $05 origin Y
+    push HL;
 
-    HL = SP + $04;
+    HL = SP + $06;
 
     A = [HL++];
 
@@ -159,8 +172,10 @@ subroutine Write_String_To_Tilemap
 
     D = $00;
     E = A;
+
+    pop HL;
     
-    HL = VRAM_TILEM_1;
+    #HL = VRAM_TILEM_1;
     HL += DE;   # Adds horizontal offset
 
     D = H;

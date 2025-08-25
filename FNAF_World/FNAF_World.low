@@ -35,7 +35,11 @@ subroutine Memcpy_Skip
 
 file FNAF_World/Terrain_Graphics.td;
 
+file FNAF_World/Character_Graphics.td;
+
 file FNAF_World/Global_Variables.low;
+
+file FNAF_World/Input_Handling.low;
 
 data Alphabet_Tile_Data
 file FNAF_World/Alphabet_Tiles.td;
@@ -51,6 +55,10 @@ file FNAF_World/Meta_Sprite_Handling.low;
 file FNAF_World/Dialogue_Scene.low;
 
 file FNAF_World/Screen_Interrupt_Handler.low;
+
+file FNAF_World/Character_Graphics.td;
+file FNAF_World/Character_Select.low;
+file FNAF_World/Character_Select_Menu.low;
 
 file FNAF_World/Title_Screen.low;
 
@@ -87,6 +95,22 @@ subroutine Main
     DE = 336;
     call Memcpy;
 
+    HL = Freddy_Character_Graphics;
+    DE = Freddy_Character_Graphics_Size;
+    call Memcpy;
+
+    #HL = Bonnie_Character_Graphics;
+    #DE = Bonnie_Character_Graphics_Size;
+    #call Memcpy;
+
+    #HL = Chica_Character_Graphics;
+    #DE = Chica_Character_Graphics_Size;
+    #call Memcpy;
+
+    HL = Foxy_Character_Graphics;
+    DE = Foxy_Character_Graphics_Size;
+    call Memcpy;
+
     HL = Alphabet_Tile_Data;
     BC = VRAM_BLOCK_1;      # Shared VRAM block
     DE = 736;
@@ -97,7 +121,7 @@ subroutine Main
     call Memcpy;
 
     HL = Background_Tilemap_Data;
-    BC = VRAM_TILEM_0;
+    BC = $98A0;
     DE = 576;
     call Memcpy;
 
@@ -109,15 +133,17 @@ subroutine Main
 
     call Init_Title_Screen_Graphics;
 
-    HL = $0500;
+    HL = $0000;
     push HL;
-    HL = $0512;
+    HL = $0412;
     push HL;
+    DE = VRAM_TILEM_1;
     call Initialise_UI_Prompt_Window;
 
-    HL = $0601;
+    HL = $0101;
     push HL;
     BC = Test_Text_Data;
+    HL = VRAM_TILEM_1;  # Window tilemap
     call Write_String_To_Tilemap;
 
     #
@@ -143,7 +169,7 @@ subroutine Main
 
     enablei;
 
-    A = %11100011;
+    A = %10100011;  # Window and background both use Tilemap 0
     [$FF00 + LCDC_REGISTER] = A;
 
     A = $00;

@@ -480,6 +480,15 @@ unsigned char Ascii_To_Code(unsigned char Character)
 
 	case '\'':
 		return 0x28u;
+
+	case '-':
+		return 0x2Bu;
+
+	case '+':
+		return 0x29u;
+
+	case '%':
+		return 0x2Au;
 	}
 
 	return 0x2Du;
