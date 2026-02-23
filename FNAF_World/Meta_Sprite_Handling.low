@@ -110,7 +110,7 @@ subroutine Place_Sprites_In_OAM # detailed sprite
     # HL will grab stuff off the stack
 
     # Example:
-    #   BC = $0810; # x = 8, y = 16
+    #   BC = $0810; # y = 8, x = 16
     #   push BC;
     #   BC = $0004; flags = 0, count = 4
 

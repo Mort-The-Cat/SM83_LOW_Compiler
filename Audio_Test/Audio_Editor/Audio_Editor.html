@@ -189,7 +189,7 @@
                 }
             }
 
-            if(Lines[Index][0] == '\t') // Probably a note trigger byte
+            if(Lines[Index][0] == ' ') // Probably a note trigger byte
             {
                 // Line[2] = trigger
                 // Line[3] = enable length?
@@ -223,7 +223,7 @@
 
                     if(Phrases[Phrase_ID].List_Of_Beats[Beat_Index].New_Sweep)
                     {
-                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Period = parseInt(Lines[Index].substring(4, 4 + 3), 2) << 4;
+                        Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Period = parseInt(Lines[Index].substring(4, 4 + 3), 2);// << 4;
                         Phrases[Phrase_ID].List_Of_Beats[Beat_Index].Sweep_Shift = parseInt(Lines[Index].substring(8, 8 + 3), 2);
                         if(Lines[Index][7] == '1')
                         {
@@ -325,7 +325,7 @@
                 Current_Beat = Phrases[Phrase_ID].List_Of_Beats[Beat_Index];
                 if(Current_Beat.Note_ID == 0)
                 {
-                    Out.value += "\t$00 # Blank note\n";
+                    Out.value += " $00 # Blank note\n";
                     continue;
                 }
 
@@ -346,7 +346,7 @@
                 Byte <<= 3;
                 Byte += Notes[Current_Beat.Note_ID].Value >> 8;
 
-                Out.value += "\t%" + Byte.toString(2).padStart(8, '0') + "\n";
+                Out.value += " %" + Byte.toString(2).padStart(8, '0') + "\n";
 
                 if(Current_Beat.New_Sweep)
                 {
@@ -359,7 +359,7 @@
                     Byte <<= 3;
                     Byte += Math.abs(Sweep_Shift);
 
-                    Out.value += "\t\t%" + Byte.toString(2).padStart(8, '0') + " # Sweep\n";
+                    Out.value += "  %" + Byte.toString(2).padStart(8, '0') + " # Sweep\n";
                 }
 
                 if(Current_Beat.New_Duty_Length)
@@ -368,7 +368,7 @@
                     Byte <<= 6;
                     Byte += (Length != -1 ? Length : 0);
 
-                    Out.value += "\t\t%" + Byte.toString(2).padStart(8, '0') + " # Duty/Length\n";
+                    Out.value += "  %" + Byte.toString(2).padStart(8, '0') + " # Duty/Length\n";
                 }
 
                 if(Current_Beat.New_Volume_Envelope)
@@ -382,7 +382,7 @@
                     Byte <<= 3;
                     Byte += Math.abs(Volume_Envelope);
 
-                    Out.value += "\t\t%" + Byte.toString(2).padStart(8, '0') + " # Volume/envelope\n";
+                    Out.value += "  %" + Byte.toString(2).padStart(8, '0') + " # Volume/envelope\n";
                 }
 
                 Byte = Notes[Current_Beat.Note_ID].Value & 0xFF;
@@ -393,14 +393,14 @@
                     Byte |= (Duty == 1 ? 8 : 0); // This sets the LSFR bit count (1 = 7-bit, 0 = 15-bit)
                 }
 
-                Out.value += "\t\t%" + Byte.toString(2).padStart(8, '0') + " # Frequency\n\n";
+                Out.value += "  %" + Byte.toString(2).padStart(8, '0') + " # Frequency\n\n";
 
                 // Played a note!!! Yippee!!
             }
 
 
 
-            Out.value += "\t%00000001 # End of phrase byte\n}\n";
+            Out.value += " %00000001 # End of phrase byte\n}\n";
         }
     }
 
@@ -687,6 +687,9 @@
     var Noise_Buffer = [];
     var Byte_Noise_Buffer = [];
 
+    var Square_Buffers = [[], [], [], []];
+    const Square_Buffers_Sample_Count = 256;
+
     function Generate_Noise_Buffer()
     {
         Noise_Buffer = Audio_Context.createBuffer(1, 65000, Audio_Context.sampleRate);
@@ -701,6 +704,31 @@
         for(let W = 0; W < 128; W++)
         {
             Output[W] = Math.round(Math.random()) * 2 - 1;
+        }
+
+        //
+
+        for(let Duty = 0; Duty < 4; Duty++)
+        {
+            //let Amplitude = 1;
+
+            let Origin = 0;
+
+            Square_Buffers[Duty] = Audio_Context.createBuffer(1, Square_Buffers_Sample_Count, Audio_Context.sampleRate);
+            Output = Square_Buffers[Duty].getChannelData(0);
+            for(let W = 0; W < Square_Buffers_Sample_Count; W++)
+            {
+                Origin = [1.0/8, 2.0/8, 4.0/8, 2.0/8][Duty] * Square_Buffers_Sample_Count;
+
+                if([1.0/8, 2.0/8, 4.0/8, 2.0/8][Duty] * Square_Buffers_Sample_Count < W)
+                {
+                    Output[W] = Math.pow(0.5, 0.5 * (W - Origin) / Square_Buffers_Sample_Count);
+                }
+                else
+                {
+                    Output[W] = -Math.pow(0.5, 0.5 * (W - Origin) / Square_Buffers_Sample_Count);
+                }
+            }
         }
     }
 
@@ -799,7 +827,81 @@
         }, 1000 * (64 - Length) / 256, Source, Gain_Node);
     }
 
-    function Play_Square_Note(Volume, Frequency, Duty, Length, Volume_Envelope, Sweep_Shift, Sweep_Period) // This is just for the demoplayback
+    //const Square_Buffers = 
+    //    [
+    //        [ -1, -1, -1, -1, -1, -1, -1,  1],
+    //        [ -1, -1, -1, -1, -1, -1,  1,  1],
+    //        [ -1, -1, -1, -1,  1,  1,  1,  1],
+    //        [ -1, -1, -1, -1, -1, -1,  1,  1]
+    //    ];
+
+    function Play_Square_Note(Volume, Frequency, Duty, Length, Volume_Envelope, Sweep_Shift, Sweep_Period)
+    {
+        if(Frequency == 0)
+            return;
+
+        let Source = Audio_Context.createBufferSource();
+        let Gain_Node = Audio_Context.createGain();
+
+        Source.buffer = Square_Buffers[Duty];
+
+        Gain_Node.gain.setValueAtTime(Volume / 15, Audio_Context.currentTime);
+        
+        if(Volume_Envelope < 0)
+        {
+            let Time_Until_Zero = 1 - (Volume * Volume_Envelope);
+            Time_Until_Zero /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(0, Audio_Context.currentTime + Time_Until_Zero);
+        }
+        else if(Volume_Envelope > 0)
+        {
+            let Time_Until_Max = (15 - Volume) * Volume_Envelope;
+            Time_Until_Max /= 64;
+            Gain_Node.gain.linearRampToValueAtTime(1, Audio_Context.currentTime + Time_Until_Max);
+        }
+
+        Source.loop = true;
+        Source.start(0);
+
+        let Produced_Frequency = Square_Buffers_Sample_Count * 131072 / (2048 - Frequency) / Audio_Context.sampleRate;
+
+        // Oscillator.frequency.setValueAtTime(Produced_Frequency, Audio_Context.currentTime);
+
+        Source.playbackRate.setValueAtTime(Produced_Frequency, Audio_Context.currentTime);
+
+        if(Sweep_Period != 0)
+        {
+            //if(Sweep_Shift < 0)
+            {
+                let Magnitude = Sweep_Shift > 0 ? 1 : -1;
+                for(let Iteration = 1; Iteration < 512; Iteration++)
+                {
+                    let Final_Produced_Frequency = 131072 / (2048 - (
+                        Frequency * Math.pow(1.0 + Magnitude *  Math.pow(0.5, Math.abs(Sweep_Shift)), Iteration/Sweep_Period)
+                    )) * Square_Buffers_Sample_Count / Audio_Context.sampleRate;
+
+                    Source.playbackRate.setValueAtTime(Final_Produced_Frequency, Audio_Context.currentTime + (1 + Iteration) / 512);
+                }
+            }
+        }
+
+        //Source.playbackRate.value = Square_Buffers_Sample_Count * Produced_Frequency / Audio_Context.sampleRate;
+
+        console.log(Get_Noise_Frequency(Frequency));
+
+        Source.connect(Gain_Node);
+        Gain_Node.connect(Audio_Context.destination);
+
+        setTimeout(() => 
+        {
+            Source.stop();
+            Source.loop = false;
+            Source = null;
+            Gain_Node = null;
+        }, 1000 * (64 - Length) / 256, Source, Gain_Node);
+    }
+
+    function Play_Square_Note_Old(Volume, Frequency, Duty, Length, Volume_Envelope, Sweep_Shift, Sweep_Period) // This is just for the demoplayback
     {
         if(Frequency == 0)
             return;

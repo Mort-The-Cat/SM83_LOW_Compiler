@@ -654,6 +654,8 @@ unsigned char Get_File_Contents(Vector* File_Contents, const char* File_Director
 			return TOKENISE_ERROR_CODE_BAD_FILE;
 	}
 
+	fclose(File);
+
 	return TOKENISE_ERROR_CODE_0;
 
 	// Vector_Push_Byte(File_Contents, '\0'); // NULL-terminate the file
